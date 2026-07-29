@@ -1,24 +1,25 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
-namespace PortalDoPublicador.Shared.Enums;
+namespace PortalDoPublicador.Shared.Features.Perfis;
 
 public enum SituacaoEspiritual
 {
-    [Description("Nenhum")]
+    [Display(Name = "Nenhum")]
     Nenhum,
     
-    [Description("Publicador Não Batizado")]
+    [Display(Name = "Publicador não batizado")]
     PublicadorNaoBatizado,
     
-    [Description("Publicador Batizado")]
+    [Display(Name = "Publicador batizado")]
     Publicador,
     
-    [Description("Servo Ministerial")]
+    [Display(Name = "Servo ministerial")]
     ServoMinisterial,
     
-    [Description("Ancião")]
+    [Display(Name = "Ancião")]
     Anciao,
     
-    [Description("Removido")]
+    [Display(Name = "Removido")]
     Removido
 }

@@ -2,5 +2,6 @@ namespace PortalDoPublicador.Shared.Infrastructure.Sync;
 
 public interface ISyncable
 {
-    DateTime DataModificacao { get; set; }
+    Guid Id { get; set; }
+    int? RowVersion { get; set; }
 }

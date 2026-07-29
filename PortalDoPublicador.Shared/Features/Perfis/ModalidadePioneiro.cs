@@ -1,18 +1,21 @@
-using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace PortalDoPublicador.Shared.Features.Perfis;
 
 public enum ModalidadePioneiro
 {
-    [Description("Pioneiro Auxiliar (15 Horas)")]
+    [Display(Name = "Nenhum")]
+    Nenhum = 0,
+    
+    [Display(Name = "Pioneiro Auxiliar (15 Horas)")]
     Auxiliar15horas,
     
-    [Description("Pioneiro Auxiliar (30 Horas)")]
+    [Display(Name = "Pioneiro Auxiliar (30 Horas)")]
     Auxiliar30horas,
     
-    [Description("Pioneiro Regular")]
+    [Display(Name = "Pioneiro Regular")]
     Regular,
     
-    [Description("Pioneiro Especial")]
+    [Display(Name = "Pioneiro Especial")]
     Especial
 }

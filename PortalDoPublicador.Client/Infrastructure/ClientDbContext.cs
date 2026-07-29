@@ -1,14 +1,13 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
 using DnetIndexedDb;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.JSInterop;
+using PortalDoPublicador.Shared.Infrastructure.Data;
 using PortalDoPublicador.Shared.Infrastructure.Sync;
 
 namespace PortalDoPublicador.Client.Infrastructure;
 
-public class ClientDbContext(IndexedDbInterop indexedDb, IJSRuntime jsRuntime) : DbContext
+public class ClientDbContext(DbContextOptions<ClientDbContext> options, IndexedDbInterop indexedDb, IJSRuntime jsRuntime) : SharedDbContext(options)
 {
     public async override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
@@ -23,36 +22,62 @@ public class ClientDbContext(IndexedDbInterop indexedDb, IJSRuntime jsRuntime) :
         {
             var entradasModificadas = ChangeTracker.Entries()
                 .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
-                .Select(e => new { Entry = e, Estado = e.State })
                 .ToList();
+
+            var datetime = DateTime.UtcNow;
+            var syncPayloads = new List<SyncPayload>();
+
+            foreach (var entry in entradasModificadas)
+            {
+                var changes = new Dictionary<string, object>();
+                var previous = new Dictionary<string, object>();
+
+                var propriedadesAlvo = entry.Properties
+                    .Where(p => !p.Metadata.IsShadowProperty() || p.Metadata.IsForeignKey());
+
+                if (entry.State == EntityState.Modified)
+                {
+                    propriedadesAlvo = propriedadesAlvo.Where(p => p.IsModified);
+                }
+
+                foreach (var prop in propriedadesAlvo)
+                {
+                    var nomeColuna = prop.Metadata.Name;
+
+                    if (entry.State is EntityState.Added or EntityState.Modified)
+                    {
+                        changes[nomeColuna] = prop.CurrentValue!;
+                    }
+
+                    if (entry.State is EntityState.Deleted or EntityState.Modified)
+                    {
+                        previous[nomeColuna] = prop.OriginalValue!;
+                    }
+                }
+
+                syncPayloads.Add(new SyncPayload
+                {
+                    Timestamp = datetime,
+                    EntityId = (Guid)entry.Property("Id").CurrentValue!,
+                    EntityName = entry.Metadata.ClrType.Name,
+                    EntityChanges = changes,
+                    PreviousValues = previous,
+                    RowVersion = entry.Metadata.FindProperty("RowVersion") != null ? entry.Property("RowVersion").CurrentValue as int? : null
+                });
+            }
 
             var result = await base.SaveChangesAsync(ct);
 
-            var datetime = DateTime.UtcNow;
-            var options = new JsonSerializerOptions
+            if (syncPayloads.Count != 0)
             {
-                ReferenceHandler = ReferenceHandler.Preserve
-            };
-
-            var syncPayloads = entradasModificadas.Select(x => new SyncPayload
-            {
-                Timestamp = datetime,
-                Entity = JsonSerializer.Serialize(x.Entry.Entity, options),
-                EntityName = x.Entry.Entity.GetType().Name,
-                EntityState = x.Estado
-            }).ToList();
-
-            if (entradasModificadas.Count != 0)
-            {
-                await indexedDb.AddItems<SyncPayload>("SyncPushQueue", syncPayloads);
+                await indexedDb.AddItems("SyncPushQueue", syncPayloads);
                 await transaction.CommitAsync(ct);
-            }
 
-            await transaction.CommitAsync(ct);
-
-            if (entradasModificadas.Count != 0)
-            {
                 await jsRuntime.InvokeVoidAsync("SincronizacaoOffline.registrarSync");
+            }
+            else
+            {
+                await transaction.CommitAsync(ct);
             }
 
             return result;

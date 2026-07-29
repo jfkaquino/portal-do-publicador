@@ -11,7 +11,6 @@ public class SharedDbContext(DbContextOptions options) : DbContext(options)
     public DbSet<Usuario> Usuarios { get; set; }
     public DbSet<Perfil> Perfis { get; set; }
     public DbSet<Familia> Familias { get; set; }
-    public DbSet<Contato> Contatos { get; set; }
     public DbSet<Pioneiro> Pioneiros { get; set; }
     public DbSet<Grupo> Grupos { get; set; }
     public DbSet<Responsabilidade> Responsabilidades { get; set; }
@@ -58,13 +57,23 @@ public class SharedDbContext(DbContextOptions options) : DbContext(options)
             .WithOne(p => p.Usuario)
             .HasForeignKey<Perfil>("UsuarioId");
 
-        // 4. Configurar Relação 1:1 Perfil -> Contato
-        modelBuilder.Entity<Perfil>()
-            .HasOne(p => p.Contato)
-            .WithOne(c => c.Perfil)
-            .HasForeignKey<Contato>("PerfilId");
+        // 5. Configurar relações entre Grupo e Perfil para evitar ambiguidade entre navegações
+        modelBuilder.Entity<Grupo>()
+            .HasOne(g => g.Superintendente)
+            .WithMany()
+            .HasForeignKey("SuperintendenteId");
 
-        // 5. Garantir que as heranças TPH sejam mapeadas claramente
+        modelBuilder.Entity<Grupo>()
+            .HasOne(g => g.Ajudante)
+            .WithMany()
+            .HasForeignKey("AjudanteId");
+
+        modelBuilder.Entity<Grupo>()
+            .HasMany(g => g.Membros)
+            .WithOne(p => p.Grupo)
+            .HasForeignKey("GrupoId");
+
+        // 6. Garantir que as heranças TPH sejam mapeadas claramente
         modelBuilder.Entity<Evento>()
             .HasDiscriminator<string>("TipoEvento")
             .HasValue<ReuniaoMeioDeSemana>("MeioDeSemana")

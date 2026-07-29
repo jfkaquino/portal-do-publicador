@@ -8,9 +8,9 @@ public class SyncRequest
 
 public class SyncResponse
 {
-    public List<SyncResult> SyncResults { get; set; } = [];
+    public List<SyncResult> ResultadosPush { get; set; } = [];
     public List<SyncPayload> DadosPull { get; set; } = [];
-    public DateTime NovaDataSincronizacao { get; set; }
+    public DateTime Timestamp { get; set; }
 }
 
 public class SyncResult

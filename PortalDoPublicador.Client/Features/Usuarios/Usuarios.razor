@@ -1,0 +1,90 @@
+@page "/usuarios"
+@using PortalDoPublicador.Shared.Features.Perfis
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Mapster
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
+@inject UsuariosService UsuarioService
+@inject IDialogService DialogService
+@inject IToastService ToastService
+
+<FluentStack Orientation="Orientation.Vertical" Width="100%" Style="gap: 16px;">
+    <FluentLabel Typo="Typography.PageTitle">Usuários</FluentLabel>
+
+    <Tabela TItem="Usuario" Items="@usuarios">
+        <BotoesAcao>
+            <FluentButton Appearance="Appearance.Accent" IconStart="@(new Icons.Regular.Size16.PersonAdd())" OnClick="@AbrirModalCriarUsuarioAsync">Novo Usuário</FluentButton>
+            <FluentButton Appearance="Appearance.Outline" IconStart="@(new Icons.Regular.Size16.ArrowExport())">Exportar</FluentButton>
+        </BotoesAcao>
+        <ChildContent>
+            <TemplateColumn TGridItem="Usuario" Title="Nome exibição" Sortable="true" SortBy="GridSort<Usuario>.ByAscending(u => u.NomeExibicao)">
+                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 12px;">
+                    <FluentPersona Name="@context.NomeExibicao" ImageSize="40px" />
+                    <FluentLabel Weight="FontWeight.Bold">@context.NomeExibicao</FluentLabel>
+                </FluentStack>
+            </TemplateColumn>
+            <PropertyColumn TGridItem="Usuario" TProp="DateTime" Title="Nascimento" Property="@(u => u.DataNascimento)" Format="dd/MM/yyyy" Sortable="true" />
+            <PropertyColumn TGridItem="Usuario" TProp="string" Title="Telefone" Property="@(u => u.Telefone)" Sortable="true" />
+            <PropertyColumn TGridItem="Usuario" TProp="string" Title="E-mail" Property="@(u => u.Email)" Sortable="true" />
+        </ChildContent>
+    </Tabela>
+</FluentStack>
+
+@code {
+    private List<Usuario> usuarios = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarUsuariosAsync();
+    }
+
+    private async Task CarregarUsuariosAsync()
+    {
+        usuarios = await UsuarioService.GetUsuariosAsync();
+    }
+
+    private async Task AbrirModalCriarUsuarioAsync()
+    {
+        var dialog = await DialogService.ShowDialogAsync<CriarUsuarioDialog>(new NovoUsuarioDto(), new DialogParameters
+        {
+            Title = string.Empty,
+            ShowTitle = false,
+			Width = "600px",
+            ShowDismiss = false,
+            PreventDismissOnOverlayClick = true,
+            PreventScroll = true,
+            TrapFocus = true
+        });
+
+        var result = await dialog.Result;
+        if (!result.Cancelled && result.Data is NovoUsuarioDto formModel)
+        {
+            var novoUsuario = formModel.Adapt<Usuario>();
+            if (novoUsuario.Id == Guid.Empty) novoUsuario.Id = Guid.NewGuid();
+
+            var novoPerfil = new Perfil
+            {
+                Id = Guid.NewGuid(),
+                Usuario = novoUsuario,
+                SituacaoEspiritual = formModel.SituacaoEspiritual
+            };
+
+            if (formModel.ModalidadePioneiro != ModalidadePioneiro.Nenhum)
+            {
+                novoPerfil.HistoricoPioneiro.Add(new Pioneiro
+                {
+                    Id = Guid.NewGuid(),
+                    Perfil = novoPerfil,
+                    ModalidadePioneiro = formModel.ModalidadePioneiro,
+                    DataInicio = DateTime.Today
+                });
+            }
+
+            novoUsuario.Perfil = novoPerfil;
+
+            await UsuarioService.CriarUsuarioAsync(novoUsuario);
+            await CarregarUsuariosAsync();
+            ToastService.ShowSuccess("Usuário criado e salvo com sucesso!");
+        }
+    }
+}
+

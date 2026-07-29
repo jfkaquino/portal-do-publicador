@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PortalDoPublicador.Api.Features;
+using PortalDoPublicador.Api.Infrastructure.Data;
 using PortalDoPublicador.Shared.Infrastructure.Data;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,7 +10,7 @@ builder.Services.AddDbContext<PortalDoPublicador.Api.Infrastructure.Data.ApiDbCo
     options.UseSqlite("Data Source=app.db"));
 
 // Forward AppDbContext resolution to ApiDbContext so other injected services still work
-builder.Services.AddScoped<SharedDbContext>(sp => sp.GetRequiredService<PortalDoPublicador.Api.Infrastructure.Data.ApiDbContext>());
+builder.Services.AddScoped<SharedDbContext>(sp => sp.GetRequiredService<ApiDbContext>());
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
