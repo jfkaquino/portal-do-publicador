@@ -7,10 +7,11 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.FluentUI.AspNetCore.Components;
 using PortalDoPublicador.Client;
-using PortalDoPublicador.Client.Features.Usuarios;
 using PortalDoPublicador.Client.Infrastructure;
 using PortalDoPublicador.Client.Infrastructure.Sync;
+using PortalDoPublicador.Shared.Features.Perfis;
 using PortalDoPublicador.Shared.Infrastructure.Data;
+using SqliteWasmBlazor;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
@@ -21,8 +22,11 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // 2. Configuração do Entity Framework (SQLite)
 builder.Services.AddDbContext<ClientDbContext>((sp, options) =>
 {
-    options.UseSqlite("Filename=app.db");
+    var connection = new SqliteWasmConnection("Data Source=app.db");
+    options.UseSqliteWasm(connection);
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.SqliteEventId.UnexpectedConnectionTypeWarning));
 });
+builder.Services.AddSqliteWasm();
 builder.Services.AddScoped<SharedDbContext>(sp => sp.GetRequiredService<ClientDbContext>());
 
 // 3. Configuração do IndexedDB
@@ -30,10 +34,25 @@ builder.Services.AddIndexedDbDatabase<IndexedDbInterop>(options =>
 {
     var model = new IndexedDbDatabaseModel()
         .WithName("MeuAppOfflineDb")
-        .WithVersion(2);
+        .WithVersion(6);
 
-    model.AddStore("SyncPushQueue").WithKey("id");
-    model.AddStore("SyncPullQueue").WithAutoIncrementingKey("id");
+    var pushStore = model.AddStore("SyncPushQueue").WithKey("id");
+    pushStore.Indexes = new List<IndexedDbIndex>
+    {
+        new IndexedDbIndex { Name = "Timestamp" }
+    };
+
+    var pullStore = model.AddStore("SyncPullQueue").WithAutoIncrementingKey("id");
+    pullStore.Indexes = new List<IndexedDbIndex>
+    {
+        new IndexedDbIndex { Name = "Timestamp" }
+    };
+
+    var configStore = model.AddStore("Configuracoes").WithKey("chave");
+    configStore.Indexes = new List<IndexedDbIndex>
+    {
+        new IndexedDbIndex { Name = "dummy" }
+    };
 
     options.UseDatabase(model);
 });
@@ -46,16 +65,22 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 // 5. Serviços da Aplicação e UI
 builder.Services.AddFluentUIComponents();
 builder.Services.AddValidatorsFromAssemblyContaining<App>();
+builder.Services.AddValidatorsFromAssemblyContaining<NovoUsuarioDtoValidator>();
+Mapster.TypeAdapterConfig.GlobalSettings.Scan(typeof(NovoUsuarioDtoConfig).Assembly);
 builder.Services.AddScoped<PullProcessor>();
-builder.Services.AddScoped<UsuariosService>();
 builder.Services.AddScoped<IRepository, Repository>();
 
 // 6. Construir o Host da Aplicação
 var host = builder.Build();
 
 // 7. Inicialização do Banco de Dados (Deve ocorrer após o Build)
+await host.Services.InitializeSqliteWasmDatabaseAsync<ClientDbContext>();
+
 using (var scope = host.Services.CreateScope())
 {
+    var indexedDb = scope.ServiceProvider.GetRequiredService<IndexedDbInterop>();
+    await indexedDb.OpenIndexedDb();
+
     var dbContext = scope.ServiceProvider.GetRequiredService<ClientDbContext>();
     await dbContext.Database.EnsureCreatedAsync();
 }

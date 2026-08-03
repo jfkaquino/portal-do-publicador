@@ -3,7 +3,7 @@
 async function syncQueue(db) {
     try {
         // 1. Pega os dados locais
-        const comandosPendentes = await dbLerTodos(db, 'FilaComandos');
+        const comandosPendentes = await dbLerTodos(db, 'SyncPushQueue');
 
         let ultimaSync = "2000-01-01T00:00:00Z";
         const configReq = await dbLerItem(db, 'Configuracoes', 'ultimaSync');
@@ -59,7 +59,7 @@ async function syncQueue(db) {
         const temExclusoes = Object.keys(dadosPull.entidadesExcluidas || {}).length > 0;
         
         if (temAtualizacoes || temExclusoes) {
-            await dbSalvarItem(db, 'FilaPull', { dados: dadosPull });
+            await dbSalvarItem(db, 'SyncPullQueue', { dados: dadosPull });
         }
 
         // C. Atualiza a data com o relógio oficial do servidor
@@ -71,5 +71,15 @@ async function syncQueue(db) {
     } catch (erro) {
         console.error('Erro na sincronização bidirecional:', erro);
         throw erro;
+    }
+}
+
+async function limparComandosProcessados(db, relatorio) {
+    for (const r of relatorio) {
+        await new Promise((resolve) => {
+            const req = db.transaction('SyncPushQueue', 'readwrite').objectStore('SyncPushQueue').delete(r.comandoId);
+            req.onsuccess = resolve;
+            req.onerror = resolve; // Ignore se não existir
+        });
     }
 }

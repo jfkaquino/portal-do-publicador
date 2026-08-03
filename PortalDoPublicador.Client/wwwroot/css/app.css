@@ -13,6 +13,39 @@ html, body, #app {
     overflow: hidden;
 }
 
+/* 1. DOMANDO O COMPORTAMENTO DA TELA */
+html, body {
+    /* Mata o "efeito elástico" no topo/fim da página e impede o pull-to-refresh nativo */
+    overscroll-behavior-y: none;
+    /* Previne que um duplo clique rápido dê zoom na tela (comum em celulares) */
+    touch-action: manipulation;
+    /* Garante que o app não fique por baixo do notch ou da barra inferior do iOS */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 2. REMOVENDO FEEDBACKS VISUAIS DE NAVEGADOR */
+* {
+    /* Remove a caixa azul/cinza que pisca quando você toca em um link ou botão no celular */
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 3. IMPEDINDO A SELEÇÃO ACIDENTAL DE TEXTO */
+body {
+    /* Impede que o usuário selecione os textos da interface segurando o dedo */
+    -webkit-user-select: none; /* Safari */
+    user-select: none; /* Padrão */
+    /* Mata o menu de contexto (copiar/colar/pesquisar) nativo do iOS ao segurar o dedo */
+    -webkit-touch-callout: none;
+}
+
+/* 4. EXCEÇÃO PARA INPUTS (Crucial!) */
+/* Como você bloqueou a seleção de texto no body, precisa liberar para os inputs do seu form EF */
+input, textarea {
+    -webkit-user-select: auto;
+    user-select: auto;
+}
+
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;

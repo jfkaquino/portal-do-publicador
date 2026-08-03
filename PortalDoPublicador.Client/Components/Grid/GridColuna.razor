@@ -1,0 +1,24 @@
+@typeparam TItem
+@code {
+    [CascadingParameter] internal Grid<TItem> Grid { get; set; } = default!;
+    
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public Func<TItem, string?>? Valor { get; set; }
+    [Parameter] public RenderFragment<TItem>? ChildContent { get; set; }
+    [Parameter] public Microsoft.FluentUI.AspNetCore.Components.GridSort<TItem>? SortBy { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Grid is not null)
+        {
+            var coluna = new ColunaGrid<TItem> 
+            {
+                Titulo = Titulo,
+                Valor = Valor,
+                Template = ChildContent,
+                SortBy = SortBy
+            };
+            Grid.AddColuna(coluna);
+        }
+    }
+}

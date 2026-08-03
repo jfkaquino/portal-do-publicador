@@ -1,9 +1,10 @@
-using PortalDoPublicador.Shared.Features.Perfis;
+using System;
 
-namespace PortalDoPublicador.Client.Features.Usuarios;
+namespace PortalDoPublicador.Shared.Features.Perfis;
 
 public class NovoUsuarioDto
 {
+    public Guid? Id { get; set; }
     public string NomeCompleto { get; set; } = string.Empty;
     public string NomeExibicao { get; set; } = string.Empty;
     public DateTime? DataNascimento { get; set; }
@@ -13,5 +14,5 @@ public class NovoUsuarioDto
     public string Endereco { get; set; } = string.Empty;
     public SituacaoEspiritual SituacaoEspiritual { get; set; }
     public ModalidadePioneiro ModalidadePioneiro { get; set; }
-    public Familia? Familia { get; set; }
+    public Guid? FamiliaId { get; set; }
 }

@@ -1,0 +1,28 @@
+::deep .header-gutters {
+    margin: 0 5px 0 5px !important;
+}
+
+/* Mobile (ex: <= 576px): Painel sobreposto */
+@media (max-width: 576px) {
+    ::deep .responsive-nav {
+        position: fixed !important;
+        z-index: 9999 !important;
+        height: 100vh !important;
+        left: 0;
+        top: 50px; /* Abaixo do header se necessário. Ou 0 se cobrir o header. */
+        box-shadow: 2px 0 6px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s ease-in-out;
+        width: 280px !important;
+    }
+    
+    /* Quando o botão de menu recolhe o menu no mobile, move para fora da tela */
+    ::deep .responsive-nav.is-collapsed {
+        transform: translateX(-100%);
+        visibility: hidden;
+    }
+    
+    ::deep .responsive-nav.is-expanded {
+        transform: translateX(0);
+        visibility: visible;
+    }
+}

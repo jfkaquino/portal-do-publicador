@@ -11,11 +11,11 @@ importScripts(
 
 self.addEventListener('sync', event => {
     if (event.tag === 'sync-queue') {
-        event.waitUntil(syncQueue(event.db));
+        event.waitUntil(processarSincronizacaoCompleta());
     }
 });
 
 async function processarSincronizacaoCompleta() {
-    const db = await abrirBanco('MeuAppOfflineDb', 2);
+    const db = await abrirBanco('MeuAppOfflineDb', 5);
     await syncQueue(db);
 }

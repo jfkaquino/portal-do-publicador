@@ -1,0 +1,24 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@code {
+    [CascadingParameter] internal IGridComAcoes Grid { get; set; } = default!;
+
+    [Parameter] public string Texto { get; set; } = string.Empty;
+    [Parameter] public Icon? Icone { get; set; }
+    [Parameter] public Appearance Aparencia { get; set; } = Appearance.Neutral;
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Grid is not null)
+        {
+            var acao = new AcaoGrid 
+            {
+                Texto = Texto,
+                Icone = Icone,
+                Aparencia = Aparencia,
+                OnClick = OnClick
+            };
+            Grid.AddAcao(acao);
+        }
+    }
+}

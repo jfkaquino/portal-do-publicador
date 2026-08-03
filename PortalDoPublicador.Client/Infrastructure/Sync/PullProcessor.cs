@@ -10,6 +10,7 @@ public class PullProcessor(IndexedDbInterop indexedDb, ClientDbContext context)
 {
     public async Task ProcessarFilaPullAsync()
     {
+        await indexedDb.OpenIndexedDb();
         var payloads = await indexedDb.GetAll<SyncPayload>("SyncPullQueue");
 
         if (payloads is null or { Count: 0 })

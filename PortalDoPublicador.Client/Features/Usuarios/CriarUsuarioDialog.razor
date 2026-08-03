@@ -16,12 +16,13 @@
 </style>
 
 <FluentDialogHeader ShowDismiss="true">
-    <FluentLabel Typo="Typography.PaneHeader">Novo Usuário</FluentLabel>
+    <FluentLabel Typo="Typography.PaneHeader">@(IsEdicao ? "Editar Usuário" : "Novo Usuário")</FluentLabel>
 </FluentDialogHeader>
 
-<FluentDialogBody>
-    <EditForm id="form-novo-usuario" Model="@Content" OnValidSubmit="@SaveAsync">
-        <FluentValidationValidator />
+<EditForm id="form-novo-usuario" Model="@Content" OnValidSubmit="@SaveAsync" novalidate>
+    <FluentValidationValidator />
+
+    <FluentDialogBody>
 
         <FluentGrid Spacing="2">
 
@@ -40,7 +41,7 @@
             <FluentGridItem xs="6" sm="4">
                 <FluentSelect TOption="Familia" Items="@Familias"
                               OptionText="@(f => f.Nome)" OptionValue="@(f => f.Id.ToString())"
-                              @bind-SelectedOption="Content.Familia"
+                              @bind-Value="FamiliaIdString"
                               Label="Família" class="w-100" />
             </FluentGridItem>
 
@@ -106,20 +107,28 @@
             </FluentGridItem>
 
         </FluentGrid>
-    </EditForm>
-</FluentDialogBody>
+    </FluentDialogBody>
 
-<FluentDialogFooter>
-    <FluentButton Appearance="Appearance.Neutral" OnClick="@CancelAsync">Cancelar</FluentButton>
-    <FluentButton Type="ButtonType.Submit" form="form-novo-usuario" Appearance="Appearance.Accent">Criar Usuário</FluentButton>
-</FluentDialogFooter>
+    <FluentDialogFooter>
+        <FluentButton Appearance="Appearance.Neutral" OnClick="@CancelAsync">Cancelar</FluentButton>
+        <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent">Salvar</FluentButton>
+    </FluentDialogFooter>
+</EditForm>
 
 @code {
     [Parameter] public NovoUsuarioDto Content { get; set; } = default!;
     [CascadingParameter] public FluentDialog Dialog { get; set; } = default!;
 
+    private bool IsEdicao => Content?.Id != null && Content.Id != Guid.Empty;
+
     private bool _nomeExibicaoEditadoManualmente = false;
     public List<Familia> Familias { get; set; } = [];
+
+    private string? FamiliaIdString
+    {
+        get => Content.FamiliaId?.ToString();
+        set => Content.FamiliaId = string.IsNullOrEmpty(value) ? null : Guid.Parse(value);
+    }
 
     protected override async Task OnInitializedAsync()
     {

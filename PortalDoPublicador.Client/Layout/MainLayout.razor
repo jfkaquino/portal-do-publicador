@@ -1,61 +1,60 @@
 @inherits LayoutComponentBase
 
-<FluentLayout>
-    <FluentHeader>
-        <FluentButton BackgroundColor="rgba(0, 0, 0, 0)"
-                      OnClick="@(() => menuExpanded = !menuExpanded)"
-                      Style="margin-left: -18px; margin-right: 10px;">
-            <FluentIcon Value="@(new Icons.Regular.Size20.LineHorizontal3())" Color="Color.Fill" />
-        </FluentButton>
+<div class="layout-wrapper" style="height: 100vh; overflow: hidden;">
+    <FluentLayout>
+        <FluentHeader>
+            <FluentButton BackgroundColor="rgba(0, 0, 0, 0)"
+                          @onclick="(() => menuExpanded = !menuExpanded)" Style="margin-right: 5px;">
+                <FluentIcon Value="@(new Icons.Regular.Size20.LineHorizontal3())" Color="Color.Fill" />
+            </FluentButton>
 
-        Portal do Publicador
+            <FluentLabel Typo="Typography.H5" Color="Color.Fill" @onclick='() => NavManager.NavigateTo("/")' title="Ir ao início" style="cursor: pointer;">
+                Portal do Publicador
+            </FluentLabel>
 
-        <FluentSpacer />
+            <FluentSpacer />
 
-        <FluentButton BackgroundColor="rgba(0, 0, 0, 0)">
-            <FluentIcon Value="@(new Icons.Regular.Size20.Alert())" Color="Color.Fill" />
-        </FluentButton>
-    </FluentHeader>
+            <FluentButton BackgroundColor="rgba(0, 0, 0, 0)">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Alert())" Color="Color.Fill" />
+            </FluentButton>
+        </FluentHeader>
 
-    <FluentStack Orientation="Orientation.Horizontal" Style="height: calc(100vh - 50px);">
+        <FluentStack Orientation="Orientation.Horizontal" Style="height: calc(100vh - 50px);">
 
-        <FluentNavMenu Width="250"
-                       @bind-Expanded="menuExpanded"
-                       Collapsible="false"
-                       Title="Portal do Publicador">
-            <FluentNavLink Href="" Match="NavLinkMatch.All" Icon="@(new Icons.Regular.Size20.Home())">
-                Início
-            </FluentNavLink>
-            <FluentNavLink Href="usuarios" Icon="@(new Icons.Regular.Size20.Calendar())">
-                Programações
-            </FluentNavLink>
-            <FluentNavLink Href="" Icon="@(new Icons.Regular.Size20.PersonAvailable())">
-                Designações
-            </FluentNavLink>
-            <FluentNavLink Href="" Icon="@(new Icons.Regular.Size20.Map())">
-                Territórios
-            </FluentNavLink>
-            <FluentNavLink Href="" Icon="@(new Icons.Regular.Size20.Clock())">
-                Relatório
-            </FluentNavLink>
-            <FluentNavGroup Title="Congregação" Icon="@(new Icons.Regular.Size20.BuildingPeople())">
-                <FluentNavLink Href="usuarios" Title="Usuários" Icon="@(new Icons.Regular.Size20.People())">
-					Usuários
-                </FluentNavLink>
-            </FluentNavGroup>
-        </FluentNavMenu>
+            <FluentNavMenu Width="280"
+                           Class="@($"responsive-nav {(menuExpanded ? "is-expanded" : "is-collapsed")}")"
+                           Collapsible="false"
+                           CollapsedChildNavigation="true"
+                           @bind-Expanded="menuExpanded"
+                           Style="height: 100%; background-color: var(--neutral-layer-1); border-right: 1px solid var(--neutral-stroke-divider-rest);">
 
-        <FluentBodyContent Style="padding: 25px; overflow-y: auto;">
-            @Body
-        </FluentBodyContent>
+                <FluentNavLink Href="programacoes" Icon="@(new Icons.Regular.Size20.Calendar())">Programações</FluentNavLink>
+                <FluentNavLink Href="" Icon="@(new Icons.Regular.Size20.PersonAvailable())">Designações</FluentNavLink>
+                <FluentNavLink Href="" Icon="@(new Icons.Regular.Size20.Map())">Territórios</FluentNavLink>
+                <FluentNavLink Href="" Icon="@(new Icons.Regular.Size20.Clock())">Relatório</FluentNavLink>
 
-    </FluentStack>
+                <FluentNavGroup Title="Congregação" Icon="@(new Icons.Regular.Size20.BuildingPeople())">
+                    <FluentNavLink Href="usuarios" Title="Usuários" Icon="@(new Icons.Regular.Size20.People())">Usuários</FluentNavLink>
+                </FluentNavGroup>
+            </FluentNavMenu>
 
-    <FluentToastProvider />
-    <FluentMessageBarProvider />
-    <FluentDialogProvider />
-</FluentLayout>
+            <FluentBodyContent Style="padding: 24px; overflow-y: auto;">
+                @Body
+            </FluentBodyContent>
+
+        </FluentStack>
+
+        <FluentToastProvider />
+        <FluentMessageBarProvider />
+        <FluentDialogProvider />
+        <FluentMenuProvider />
+    </FluentLayout>
+</div>
 
 @code {
+    // Declaração do NavigationManager (caso não esteja declarado no seu _Imports.razor)
+    [Inject] public NavigationManager NavManager { get; set; } = default!;
+
+    // 3. Variável que guarda o estado do menu
     private bool menuExpanded = true;
 }

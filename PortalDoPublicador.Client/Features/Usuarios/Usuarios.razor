@@ -3,35 +3,62 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Mapster
 @using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
-@inject UsuariosService UsuarioService
+@using Microsoft.EntityFrameworkCore
+@using PortalDoPublicador.Client.Components.Grid
 @inject IDialogService DialogService
 @inject IToastService ToastService
+@using PortalDoPublicador.Shared.Infrastructure.Data
+@inject IRepository Repository
 
 <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="gap: 16px;">
     <FluentLabel Typo="Typography.PageTitle">Usuários</FluentLabel>
+    
+    <Grid TItem="Usuario"
+            Items="@usuarios"
+            OnItemClick="@AbrirModalUsuarioAsync"
+            GridTemplateColumns="2fr 1fr 1fr 1.5fr">
+        <Definicoes>
 
-    <Tabela TItem="Usuario" Items="@usuarios">
-        <BotoesAcao>
-            <FluentButton Appearance="Appearance.Accent" IconStart="@(new Icons.Regular.Size16.PersonAdd())" OnClick="@AbrirModalCriarUsuarioAsync">Novo Usuário</FluentButton>
-            <FluentButton Appearance="Appearance.Outline" IconStart="@(new Icons.Regular.Size16.ArrowExport())">Exportar</FluentButton>
-        </BotoesAcao>
-        <ChildContent>
-            <TemplateColumn TGridItem="Usuario" Title="Nome exibição" Sortable="true" SortBy="GridSort<Usuario>.ByAscending(u => u.NomeExibicao)">
-                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 12px;">
-                    <FluentPersona Name="@context.NomeExibicao" ImageSize="40px" />
-                    <FluentLabel Weight="FontWeight.Bold">@context.NomeExibicao</FluentLabel>
+            <GridAcao Texto="teste"
+                        Icone="@(new Icons.Regular.Size16.Accessibility())"
+                        Aparencia="@Appearance.Neutral" />
+
+            <GridAcao Texto="Novo"
+                        Icone="@(new Icons.Regular.Size16.Add())"
+                        Aparencia="@Appearance.Accent"
+                        OnClick="@(() => AbrirModalUsuarioAsync(null))" />
+
+            <!-- O uso de Context="usuario" evita conflitos com a palavra 'context' padrão do Blazor -->
+            <GridColuna TItem="Usuario"
+                          Titulo="Nome exibição"
+                          SortBy="@(GridSort<Usuario>.ByAscending(u => u.NomeExibicao))"
+                          Context="usuario">
+                <FluentStack>
+                    <FluentPersona Initials="@ObterIniciaisPersona(usuario.NomeExibicao)" ImageSize="32px" />
+                    <FluentLabel>@usuario.NomeExibicao</FluentLabel>
                 </FluentStack>
-            </TemplateColumn>
-            <PropertyColumn TGridItem="Usuario" TProp="DateTime" Title="Nascimento" Property="@(u => u.DataNascimento)" Format="dd/MM/yyyy" Sortable="true" />
-            <PropertyColumn TGridItem="Usuario" TProp="string" Title="Telefone" Property="@(u => u.Telefone)" Sortable="true" />
-            <PropertyColumn TGridItem="Usuario" TProp="string" Title="E-mail" Property="@(u => u.Email)" Sortable="true" />
-        </ChildContent>
-    </Tabela>
+            </GridColuna>
+
+            <GridColuna TItem="Usuario"
+                          Titulo="Nascimento"
+                          Valor="@(u => u.DataNascimento.ToString("dd/MM/yyyy"))"
+                          SortBy="@(GridSort<Usuario>.ByAscending(u => u.DataNascimento))" />
+
+            <GridColuna TItem="Usuario"
+                          Titulo="Telefone"
+                          Valor="@(u => u.Telefone)"
+                          SortBy="@(GridSort<Usuario>.ByAscending(u => u.Telefone))" />
+
+            <GridColuna TItem="Usuario"
+                          Titulo="E-mail"
+                          Valor="@(u => u.Email)"
+                          SortBy="@(GridSort<Usuario>.ByAscending(u => u.Email))" />
+        </Definicoes>
+    </Grid>
 </FluentStack>
 
 @code {
-    private List<Usuario> usuarios = [];
-
+    private List<Usuario>? usuarios = null;
     protected override async Task OnInitializedAsync()
     {
         await CarregarUsuariosAsync();
@@ -39,16 +66,33 @@
 
     private async Task CarregarUsuariosAsync()
     {
-        usuarios = await UsuarioService.GetUsuariosAsync();
+        usuarios = await Repository.Query<Usuario>()
+            .Include(u => u.Perfil)
+            .AsNoTracking()
+            .ToListAsync();
     }
 
-    private async Task AbrirModalCriarUsuarioAsync()
+    private async Task AbrirModalUsuarioAsync(Usuario? usuario = null)
     {
-        var dialog = await DialogService.ShowDialogAsync<CriarUsuarioDialog>(new NovoUsuarioDto(), new DialogParameters
+        bool isNovo = usuario == null;
+        NovoUsuarioDto formModel;
+
+        if (isNovo)
+        {
+            formModel = new NovoUsuarioDto();
+        }
+        else
+        {
+            formModel = usuario!.Adapt<NovoUsuarioDto>();
+            formModel.FamiliaId = usuario.Familia?.Id;
+            formModel.Id = usuario.Id;
+        }
+
+        var dialog = await DialogService.ShowDialogAsync<CriarUsuarioDialog>(formModel, new DialogParameters
         {
             Title = string.Empty,
             ShowTitle = false,
-			Width = "600px",
+            Width = "600px",
             ShowDismiss = false,
             PreventDismissOnOverlayClick = true,
             PreventScroll = true,
@@ -56,35 +100,75 @@
         });
 
         var result = await dialog.Result;
-        if (!result.Cancelled && result.Data is NovoUsuarioDto formModel)
+        if (!result.Cancelled && result.Data is NovoUsuarioDto formResult)
         {
-            var novoUsuario = formModel.Adapt<Usuario>();
-            if (novoUsuario.Id == Guid.Empty) novoUsuario.Id = Guid.NewGuid();
-
-            var novoPerfil = new Perfil
+            if (isNovo)
             {
-                Id = Guid.NewGuid(),
-                Usuario = novoUsuario,
-                SituacaoEspiritual = formModel.SituacaoEspiritual
-            };
-
-            if (formModel.ModalidadePioneiro != ModalidadePioneiro.Nenhum)
+                usuario = formResult.Adapt<Usuario>();
+            }
+            else
             {
-                novoPerfil.HistoricoPioneiro.Add(new Pioneiro
-                {
-                    Id = Guid.NewGuid(),
-                    Perfil = novoPerfil,
-                    ModalidadePioneiro = formModel.ModalidadePioneiro,
-                    DataInicio = DateTime.Today
-                });
+                formResult.Adapt(usuario);
             }
 
-            novoUsuario.Perfil = novoPerfil;
+            if (formResult.FamiliaId.HasValue)
+            {
+                usuario.Familia = await Repository.ObterPorIdAsync<Familia>(formResult.FamiliaId.Value);
+            }
+            else
+            {
+                usuario.Familia = null;
+            }
 
-            await UsuarioService.CriarUsuarioAsync(novoUsuario);
+            if (isNovo)
+            {
+                if (usuario.Id == Guid.Empty)
+                    usuario.Id = Guid.NewGuid();
+
+                if (usuario.Perfil is not null && usuario.Perfil.Id == Guid.Empty)
+                {
+                    usuario.Perfil.Id = Guid.NewGuid();
+                    usuario.Perfil.Usuario = usuario;
+                }
+            }
+
+            if (isNovo)
+            {
+                await Repository.InserirAsync(usuario);
+                ToastService.ShowSuccess("Usuário criado com sucesso!");
+            }
+            else
+            {
+                await Repository.AtualizarAsync(usuario);
+                ToastService.ShowSuccess("Usuário editado com sucesso!");
+            }
+
             await CarregarUsuariosAsync();
-            ToastService.ShowSuccess("Usuário criado e salvo com sucesso!");
         }
+    }
+
+    public static string ObterIniciaisPersona(string nomeExibicao)
+    {
+        if (string.IsNullOrWhiteSpace(nomeExibicao))
+            return string.Empty;
+
+        // Limpa espaços extras no começo e no fim, e divide pelas partes do nome
+        var partes = nomeExibicao.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (partes.Length == 1)
+        {
+            // Se tem só um nome (ex: "Jorge"), pega as duas primeiras letras
+            var nomeUnico = partes[0];
+            return nomeUnico.Length > 1
+                ? nomeUnico.Substring(0, 2).ToUpperInvariant()
+                : nomeUnico.ToUpperInvariant(); // Caso o nome tenha só 1 letra
+        }
+
+        // Se tem mais de um nome (ex: "Jorge Fernando Aquino"), pega a primeira letra do primeiro e do último
+        var primeiraLetraPrimeiroNome = partes[0][0];
+        var primeiraLetraUltimoNome = partes[^1][0]; // Operador de índice de fim (^1) do C# 8+
+
+        return $"{primeiraLetraPrimeiroNome}{primeiraLetraUltimoNome}".ToUpperInvariant();
     }
 }
 

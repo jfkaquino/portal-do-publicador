@@ -70,9 +70,9 @@ public class ClientDbContext(DbContextOptions<ClientDbContext> options, IndexedD
 
             if (syncPayloads.Count != 0)
             {
+                await indexedDb.OpenIndexedDb();
                 await indexedDb.AddItems("SyncPushQueue", syncPayloads);
                 await transaction.CommitAsync(ct);
-
                 await jsRuntime.InvokeVoidAsync("SincronizacaoOffline.registrarSync");
             }
             else
@@ -89,8 +89,11 @@ public class ClientDbContext(DbContextOptions<ClientDbContext> options, IndexedD
         }
     }
 
-    public Task<int> SaveLocalChangesAsync(CancellationToken ct = default)
+    public async Task<int> SaveLocalChangesAsync(CancellationToken ct = default)
     {
-        return base.SaveChangesAsync(ct);
+        var result = await base.SaveChangesAsync(ct);
+        return result;
     }
+
+
 }

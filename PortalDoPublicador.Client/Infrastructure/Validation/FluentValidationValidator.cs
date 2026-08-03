@@ -21,11 +21,11 @@ public class FluentValidationValidator : ComponentBase
 
         _messageStore = new ValidationMessageStore(CurrentEditContext);
 
-        CurrentEditContext.OnValidationRequested += (s, e) => ValidateModel();
-        CurrentEditContext.OnFieldChanged += (s, e) => ValidateField(e.FieldIdentifier);
+        CurrentEditContext.OnValidationRequested += async (s, e) => await ValidateModelAsync();
+        CurrentEditContext.OnFieldChanged += async (s, e) => await ValidateFieldAsync(e.FieldIdentifier);
     }
 
-    private void ValidateModel()
+    private async Task ValidateModelAsync()
     {
         _messageStore?.Clear();
         var model = CurrentEditContext!.Model;
@@ -35,7 +35,7 @@ public class FluentValidationValidator : ComponentBase
             var validationContextType = typeof(ValidationContext<>).MakeGenericType(model.GetType());
             var context = (IValidationContext)Activator.CreateInstance(validationContextType, model)!;
             
-            var result = validator.Validate(context);
+            var result = await validator.ValidateAsync(context);
             foreach (var error in result.Errors)
             {
                 var fieldIdentifier = new FieldIdentifier(model, error.PropertyName);
@@ -45,7 +45,7 @@ public class FluentValidationValidator : ComponentBase
         CurrentEditContext.NotifyValidationStateChanged();
     }
 
-    private void ValidateField(FieldIdentifier fieldIdentifier)
+    private async Task ValidateFieldAsync(FieldIdentifier fieldIdentifier)
     {
         _messageStore?.Clear(fieldIdentifier);
         var model = CurrentEditContext!.Model;
@@ -55,7 +55,7 @@ public class FluentValidationValidator : ComponentBase
             var validationContextType = typeof(ValidationContext<>).MakeGenericType(model.GetType());
             var context = (IValidationContext)Activator.CreateInstance(validationContextType, model)!;
             
-            var result = validator.Validate(context);
+            var result = await validator.ValidateAsync(context);
             foreach (var error in result.Errors.Where(e => e.PropertyName == fieldIdentifier.FieldName))
             {
                 _messageStore?.Add(fieldIdentifier, error.ErrorMessage);
