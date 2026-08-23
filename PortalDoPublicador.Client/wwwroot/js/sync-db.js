@@ -1,8 +1,8 @@
-﻿// wwwroot/js/sync-db.js
+// wwwroot/js/sync-db.js
 
 function abrirBanco(nome, versao) {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(nome, versao);
+        const request = versao !== undefined ? indexedDB.open(nome, versao) : indexedDB.open(nome);
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
     });

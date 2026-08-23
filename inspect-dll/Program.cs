@@ -1,54 +1,30 @@
 using System;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
-using DnetIndexedDb;
-using DnetIndexedDb.Models;
-using DnetIndexedDb.Fluent;
+using System.Linq;
+using System.Reflection;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 class Program
 {
     static void Main()
     {
-        var services = new ServiceCollection();
+        var asm = typeof(FluentSelect<,>).Assembly;
+        Console.WriteLine($"Assembly: {asm.FullName}");
         
-        // Mock JSRuntime since IndexedDbInterop needs it
-        services.AddSingleton<IJSRuntime, DummyJsRuntime>();
+        var methods = asm.GetTypes()
+            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Where(m => m.IsDefined(typeof(System.Runtime.CompilerServices.ExtensionAttribute), false))
+            .Where(m => m.GetParameters().Length > 0 && typeof(Enum).IsAssignableFrom(m.GetParameters()[0].ParameterType))
+            .ToList();
 
-        services.AddIndexedDbDatabase<IndexedDbInterop>(options =>
+        foreach (var m in methods)
         {
-            var model = new IndexedDbDatabaseModel().WithName("Test").WithVersion(1);
-            options.UseDatabase(model);
-        });
-
-        // Test resolving without forwarding
-        var sp1 = services.BuildServiceProvider();
-        try
-        {
-            var db1 = sp1.GetRequiredService<IndexedDbInterop>();
-            Console.WriteLine("SUCCESS without forwarding!");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("FAILED without forwarding: " + ex.Message);
+            Console.WriteLine($"Found Enum extension: {m.DeclaringType?.FullName}.{m.Name}");
         }
 
-        // Add forwarding
-        services.AddScoped<IndexedDbOptions>(sp => sp.GetRequiredService<IndexedDbOptions<IndexedDbInterop>>());
-        var sp2 = services.BuildServiceProvider();
-        try
+        var allTypes = asm.GetTypes().Where(t => t.Name.Contains("Enum", StringComparison.OrdinalIgnoreCase)).ToList();
+        foreach (var t in allTypes)
         {
-            var db2 = sp2.GetRequiredService<IndexedDbInterop>();
-            Console.WriteLine("SUCCESS WITH forwarding!");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("FAILED WITH forwarding: " + ex.Message);
+            Console.WriteLine($"Enum related type: {t.FullName}");
         }
     }
-}
-
-class DummyJsRuntime : IJSRuntime
-{
-    public System.Threading.Tasks.ValueTask<TValue> InvokeAsync<TValue>(string identifier, object[] args) => default;
-    public System.Threading.Tasks.ValueTask<TValue> InvokeAsync<TValue>(string identifier, System.Threading.CancellationToken cancellationToken, object[] args) => default;
 }

@@ -3,7 +3,7 @@ using PortalDoPublicador.Shared.Infrastructure.Data;
 
 namespace PortalDoPublicador.Api.Infrastructure.Data;
 
-public class ApiDbContext(DbContextOptions<ApiDbContext> options) : SharedDbContext(options)
+public class ServerDbContext(DbContextOptions<ServerDbContext> options) : SharedDbContext(options)
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

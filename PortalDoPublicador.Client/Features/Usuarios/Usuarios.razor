@@ -1,174 +1,131 @@
-@page "/usuarios"
-@using PortalDoPublicador.Shared.Features.Perfis
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Mapster
-@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
+@page "/congregacao/usuarios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using Microsoft.EntityFrameworkCore
-@using PortalDoPublicador.Client.Components.Grid
+@using PortalDoPublicador.Shared.Features.Perfis
+@using PortalDoPublicador.Client.Infrastructure
+@using Microsoft.FluentUI.AspNetCore.Components
+@using PortalDoPublicador.Shared.Extensions
+@inject IServiceScopeFactory ScopeFactory
 @inject IDialogService DialogService
-@inject IToastService ToastService
-@using PortalDoPublicador.Shared.Infrastructure.Data
-@inject IRepository Repository
 
-<FluentStack Orientation="Orientation.Vertical" Width="100%" Style="gap: 16px;">
-    <FluentLabel Typo="Typography.PageTitle">Usuários</FluentLabel>
+<PageTitle>Usuários</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center" Width="100%">
     
-    <Grid TItem="Usuario"
-            Items="@usuarios"
-            OnItemClick="@AbrirModalUsuarioAsync"
-            GridTemplateColumns="2fr 1fr 1fr 1.5fr">
-        <Definicoes>
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Style="width: 100%;">
+        <h1>Usuários</h1>
+    </FluentStack>
 
-            <GridAcao Texto="teste"
-                        Icone="@(new Icons.Regular.Size16.Accessibility())"
-                        Aparencia="@Appearance.Neutral" />
+    <FluentStack Orientation="Orientation.Horizontal"
+                 HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 Width="100%">
 
-            <GridAcao Texto="Novo"
-                        Icone="@(new Icons.Regular.Size16.Add())"
-                        Aparencia="@Appearance.Accent"
-                        OnClick="@(() => AbrirModalUsuarioAsync(null))" />
+    <FluentTextInput @bind-Value="_busca"
+                     Name="Buscar"
+                     Placeholder="Buscar"
+                     Immediate="true">
+        <StartTemplate>
+            <FluentIcon Value="@(new Icons.Regular.Size20.Search())" />
+        </StartTemplate>
+    </FluentTextInput>
 
-            <!-- O uso de Context="usuario" evita conflitos com a palavra 'context' padrão do Blazor -->
-            <GridColuna TItem="Usuario"
-                          Titulo="Nome exibição"
-                          SortBy="@(GridSort<Usuario>.ByAscending(u => u.NomeExibicao))"
-                          Context="usuario">
-                <FluentStack>
-                    <FluentPersona Initials="@ObterIniciaisPersona(usuario.NomeExibicao)" ImageSize="32px" />
-                    <FluentLabel>@usuario.NomeExibicao</FluentLabel>
-                </FluentStack>
-            </GridColuna>
+    <FluentButton Appearance="ButtonAppearance.Primary"
+                    IconStart="@(new Icons.Regular.Size20.PersonAdd())"
+                      OnClick="@(() => AbrirModalAsync())">
+        Novo Usuário
+    </FluentButton>
 
-            <GridColuna TItem="Usuario"
-                          Titulo="Nascimento"
-                          Valor="@(u => u.DataNascimento.ToString("dd/MM/yyyy"))"
-                          SortBy="@(GridSort<Usuario>.ByAscending(u => u.DataNascimento))" />
+</FluentStack>
 
-            <GridColuna TItem="Usuario"
-                          Titulo="Telefone"
-                          Valor="@(u => u.Telefone)"
-                          SortBy="@(GridSort<Usuario>.ByAscending(u => u.Telefone))" />
+    <FluentDataGrid TGridItem="Usuario"
+                    ItemsProvider="@usuarioProvider"
+                    @ref="grid"
+                    DisplayMode="DataGridDisplayMode.Table"
+                    Style="width: 100%;"
+                    RowSize="DataGridRowSize.Medium"
+                    ShowHover="true"
+                    RowStyle="@(user => "cursor: pointer;")"
+                    OnRowClick="TratarCliqueLinhaAsync">
+        <ChildContent>
+            <PropertyColumn Property="@(p => p.NomeCompleto)" Title="Nome" Sortable="true" />
+            <PropertyColumn Property="@(p => p.Email)" Title="E-mail" Sortable="true" />
+            <PropertyColumn Property="@(p => p.SituacaoEspiritual.GetDisplayName())" Title="Situação Espiritual" Sortable="true" />
+            <PropertyColumn Property="@(p => p.Telefone)" Title="Telefone" Sortable="true" />
+        </ChildContent>
 
-            <GridColuna TItem="Usuario"
-                          Titulo="E-mail"
-                          Valor="@(u => u.Email)"
-                          SortBy="@(GridSort<Usuario>.ByAscending(u => u.Email))" />
-        </Definicoes>
-    </Grid>
+        <LoadingContent>
+            <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" Style="gap: 1rem; padding: 2rem;">
+                <FluentSpinner />
+                <FluentText As="TextTag.H2" Size="TextSize.Size300">Carregando usuários...</FluentText>
+            </FluentStack>
+        </LoadingContent>
+
+        <EmptyContent>
+            <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" Style="gap: 1rem; padding: 2rem;">
+                <FluentIcon Value="@(new Icons.Regular.Size24.CollectionsEmpty())" />
+                <FluentText As="TextTag.H2" Size="TextSize.Size300">Sem resultados.</FluentText>
+            </FluentStack>
+        </EmptyContent>
+    </FluentDataGrid>
+
 </FluentStack>
 
 @code {
-    private List<Usuario>? usuarios = null;
-    protected override async Task OnInitializedAsync()
+    private GridItemsProvider<Usuario> usuarioProvider = default!;
+    private FluentDataGrid<Usuario>? grid;
+	private string _busca = string.Empty;
+
+    protected override void OnInitialized()
     {
-        await CarregarUsuariosAsync();
+        usuarioProvider = async req =>
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ClientDbContext>();
+            
+            var query = context.Usuarios.AsNoTracking();
+            
+            if (!string.IsNullOrWhiteSpace(_busca))
+            {
+                var upperBusca = _busca.ToUpper();
+                query = query.Where(u => u.NomeCompleto.ToUpper().Contains(upperBusca) || (u.Email != null && u.Email.ToUpper().Contains(upperBusca)));
+            }
+
+            var count = await query.CountAsync(req.CancellationToken);
+            var items = await query.Skip(req.StartIndex).Take(req.Count ?? 15).ToListAsync(req.CancellationToken);
+
+            return GridItemsProviderResult.From(items, count);
+        };
     }
 
-    private async Task CarregarUsuariosAsync()
+    private async Task TratarCliqueLinhaAsync(FluentDataGridRow<Usuario> row)
     {
-        usuarios = await Repository.Query<Usuario>()
-            .Include(u => u.Perfil)
-            .AsNoTracking()
-            .ToListAsync();
+        if (row.Item is not null && row.RowType == DataGridRowType.Default)
+        {
+            await AbrirModalAsync(row.Item);
+        }
     }
 
-    private async Task AbrirModalUsuarioAsync(Usuario? usuario = null)
+    private async Task AbrirModalAsync(Usuario? usuario = null)
     {
-        bool isNovo = usuario == null;
-        NovoUsuarioDto formModel;
-
-        if (isNovo)
+        var result = await DialogService.ShowDialogAsync<UsuarioDialog>(options =>
         {
-            formModel = new NovoUsuarioDto();
-        }
-        else
-        {
-            formModel = usuario!.Adapt<NovoUsuarioDto>();
-            formModel.FamiliaId = usuario.Familia?.Id;
-            formModel.Id = usuario.Id;
-        }
-
-        var dialog = await DialogService.ShowDialogAsync<CriarUsuarioDialog>(formModel, new DialogParameters
-        {
-            Title = string.Empty,
-            ShowTitle = false,
-            Width = "600px",
-            ShowDismiss = false,
-            PreventDismissOnOverlayClick = true,
-            PreventScroll = true,
-            TrapFocus = true
+			options.Header.Title = usuario is null ? "Novo Usuário" : "Editar Usuário";
+            options.Header.CloseAction.Visible = true;
+            options.Modal = true;
+            options.Width = "680px";
+            if (usuario is not null)
+            {
+                options.Parameters.Add(nameof(UsuarioDialog.UsuarioParaEditar), usuario);
+            }
         });
 
-        var result = await dialog.Result;
-        if (!result.Cancelled && result.Data is NovoUsuarioDto formResult)
+        if (!result.Cancelled && result.Value is not null)
         {
-            if (isNovo)
+            if (grid is not null)
             {
-                usuario = formResult.Adapt<Usuario>();
+                await grid.RefreshDataAsync();
             }
-            else
-            {
-                formResult.Adapt(usuario);
-            }
-
-            if (formResult.FamiliaId.HasValue)
-            {
-                usuario.Familia = await Repository.ObterPorIdAsync<Familia>(formResult.FamiliaId.Value);
-            }
-            else
-            {
-                usuario.Familia = null;
-            }
-
-            if (isNovo)
-            {
-                if (usuario.Id == Guid.Empty)
-                    usuario.Id = Guid.NewGuid();
-
-                if (usuario.Perfil is not null && usuario.Perfil.Id == Guid.Empty)
-                {
-                    usuario.Perfil.Id = Guid.NewGuid();
-                    usuario.Perfil.Usuario = usuario;
-                }
-            }
-
-            if (isNovo)
-            {
-                await Repository.InserirAsync(usuario);
-                ToastService.ShowSuccess("Usuário criado com sucesso!");
-            }
-            else
-            {
-                await Repository.AtualizarAsync(usuario);
-                ToastService.ShowSuccess("Usuário editado com sucesso!");
-            }
-
-            await CarregarUsuariosAsync();
         }
-    }
-
-    public static string ObterIniciaisPersona(string nomeExibicao)
-    {
-        if (string.IsNullOrWhiteSpace(nomeExibicao))
-            return string.Empty;
-
-        // Limpa espaços extras no começo e no fim, e divide pelas partes do nome
-        var partes = nomeExibicao.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-        if (partes.Length == 1)
-        {
-            // Se tem só um nome (ex: "Jorge"), pega as duas primeiras letras
-            var nomeUnico = partes[0];
-            return nomeUnico.Length > 1
-                ? nomeUnico.Substring(0, 2).ToUpperInvariant()
-                : nomeUnico.ToUpperInvariant(); // Caso o nome tenha só 1 letra
-        }
-
-        // Se tem mais de um nome (ex: "Jorge Fernando Aquino"), pega a primeira letra do primeiro e do último
-        var primeiraLetraPrimeiroNome = partes[0][0];
-        var primeiraLetraUltimoNome = partes[^1][0]; // Operador de índice de fim (^1) do C# 8+
-
-        return $"{primeiraLetraPrimeiroNome}{primeiraLetraUltimoNome}".ToUpperInvariant();
     }
 }
-

@@ -4,7 +4,7 @@ public class Pioneiro
 {
     public Guid Id { get; set; }
     
-    public required Perfil Perfil { get; set; }
+    public required Usuario Usuario { get; set; }
     
     public ModalidadePioneiro ModalidadePioneiro { get; set; }
     public DateTime DataInicio { get; set; }

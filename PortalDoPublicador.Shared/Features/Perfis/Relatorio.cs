@@ -4,7 +4,7 @@ public class Relatorio
 {
     public Guid Id { get; set; }
     
-    public required Perfil Perfil { get; set; }
+    public required Usuario Usuario { get; set; }
 
     public DateOnly MesReferencia { get; set; }
 

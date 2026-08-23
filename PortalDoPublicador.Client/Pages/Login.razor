@@ -1,0 +1,63 @@
+@page "/login"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@using PortalDoPublicador.Client.Infrastructure.Auth
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Login Offline</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" Style="margin: 2rem auto; max-width: 400px;">
+    
+    <FluentCard Style="width: 100%; padding: 2rem;">
+        
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+            <FluentText As="TextTag.H2" Size="TextSize.Size600" Weight="TextWeight.Bold" Align="TextAlign.Center">Acesso ao Portal</FluentText>
+            <FluentText Align="TextAlign.Center">Digite seu PIN para acessar o aplicativo offline.</FluentText>
+
+            <FluentTextInput @bind-Value="Pin" type="password" Label="PIN de Acesso" Placeholder="****" Style="width: 100%;"></FluentTextInput>
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <FluentText Color="Color.Error">@ErrorMessage</FluentText>
+            }
+
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.End" Style="margin-top: 1rem; width: 100%;">
+                <FluentButton Appearance="ButtonAppearance.Primary" @onclick="FazerLogin">Entrar</FluentButton>
+            </FluentStack>
+            
+        </FluentStack>
+        
+    </FluentCard>
+    
+</FluentStack>
+
+@code {
+    private string Pin { get; set; } = "";
+    private string ErrorMessage { get; set; } = "";
+
+    private async Task FazerLogin()
+    {
+        // Aqui você pode validar o PIN contra um hash salvo no IndexedDB/SQLite
+        // Por simplicidade, vamos aceitar qualquer PIN que tenha 4 ou mais caracteres
+        if (Pin.Length >= 4)
+        {
+            // Gera um token simples para representar que está logado
+            var token = Guid.NewGuid().ToString();
+            
+            // Salva no localStorage (persiste enquanto o usuário não limpar os dados do navegador)
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", token);
+
+            // Notifica o sistema de que o usuário logou
+            ((SimpleAuthStateProvider)AuthStateProvider).NotifyUserLogin(token);
+
+            // Redireciona para a página inicial
+            NavigationManager.NavigateTo("/");
+        }
+        else
+        {
+            ErrorMessage = "PIN inválido. Digite pelo menos 4 caracteres.";
+        }
+    }
+}

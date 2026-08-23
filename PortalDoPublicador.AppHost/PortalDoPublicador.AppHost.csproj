@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PortalDoPublicador.Api\PortalDoPublicador.Api.csproj" />
+    <ProjectReference Include="..\PortalDoPublicador.Api\PortalDoPublicador.Server.csproj" />
     <ProjectReference Include="..\PortalDoPublicador.Client\PortalDoPublicador.Client.csproj" />
   </ItemGroup>
 

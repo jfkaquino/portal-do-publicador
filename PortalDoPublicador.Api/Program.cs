@@ -6,11 +6,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.Services.AddDbContext<PortalDoPublicador.Api.Infrastructure.Data.ApiDbContext>(options =>
+builder.Services.AddDbContext<PortalDoPublicador.Api.Infrastructure.Data.ServerDbContext>(options =>
     options.UseSqlite("Data Source=app.db"));
 
 // Forward AppDbContext resolution to ApiDbContext so other injected services still work
-builder.Services.AddScoped<SharedDbContext>(sp => sp.GetRequiredService<ApiDbContext>());
+builder.Services.AddScoped<SharedDbContext>(sp => sp.GetRequiredService<ServerDbContext>());
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

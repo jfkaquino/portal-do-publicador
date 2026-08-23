@@ -1,0 +1,13 @@
+/* Em telas de tablet/celular (max-width: 800px), oculta a última coluna automaticamente */
+@media (max-width: 800px) {
+    ::deep fluent-data-grid tr > *:last-child {
+        display: none !important;
+    }
+}
+
+/* Em telas de celular menores (max-width: 600px), oculta as 2 últimas colunas automaticamente */
+@media (max-width: 600px) {
+    ::deep fluent-data-grid tr > *:nth-last-child(-n+2) {
+        display: none !important;
+    }
+}

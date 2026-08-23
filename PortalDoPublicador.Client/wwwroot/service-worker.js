@@ -16,6 +16,6 @@ self.addEventListener('sync', event => {
 });
 
 async function processarSincronizacaoCompleta() {
-    const db = await abrirBanco('MeuAppOfflineDb', 5);
+    const db = await abrirBanco('MeuAppOfflineDb');
     await syncQueue(db);
 }

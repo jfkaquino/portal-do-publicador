@@ -11,7 +11,7 @@ public static class SyncEndpoint
     {
         app.MapPost("/api/sync", async (
             [FromBody] SyncRequest requisicao,
-            ApiDbContext context,
+            ServerDbContext context,
             IServiceProvider serviceProvider) =>
         {
             // 1. Mapeamento de Tipos Seguros (Assim como fizemos no client)

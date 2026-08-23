@@ -1,0 +1,50 @@
+﻿<FluentNav Padding="@Padding.All2"
+           Style="height: 100%;"
+           UseSingleExpanded="true">
+
+    <FluentNavCategory
+                       Title="Programações"
+                       IconRest="@(new Icons.Regular.Size20.Calendar())"
+                       IconActive="@(new Icons.Filled.Size20.Calendar())">
+        <FluentNavItem Href="/programacoes/reuniao-meio-de-semana">
+            Reunião meio de semana
+        </FluentNavItem>
+        <FluentNavItem Href="">
+            Reunião fim de semana
+        </FluentNavItem>
+        <FluentNavItem Href="">
+            Saídas de campo
+        </FluentNavItem>
+        <FluentNavItem Href="">
+            Testemunho público
+        </FluentNavItem>
+    </FluentNavCategory>
+
+    <FluentNavItem Href="/"
+                   IconRest="@(new Icons.Regular.Size20.PersonBriefcase())"
+                   IconActive="@(new Icons.Filled.Size20.PersonBriefcase())">
+        Designações
+    </FluentNavItem>
+
+    <FluentNavItem Href="/"
+                   IconRest="@(new Icons.Regular.Size20.Map())"
+                   IconActive="@(new Icons.Filled.Size20.Map())">
+        Territórios
+    </FluentNavItem>
+
+    <FluentNavItem Href="/"
+                   IconRest="@(new Icons.Regular.Size20.Clock())"
+                   IconActive="@(new Icons.Filled.Size20.Clock())">
+        Relatório
+    </FluentNavItem>
+
+    <FluentNavCategory
+                       Title="Congregação"
+                       IconRest="@(new Icons.Regular.Size20.PeopleCommunity())"
+                       IconActive="@(new Icons.Filled.Size20.PeopleCommunity())">
+        <FluentNavItem Href="/congregacao/usuarios">
+            Usuários
+        </FluentNavItem>
+    </FluentNavCategory>
+
+</FluentNav>

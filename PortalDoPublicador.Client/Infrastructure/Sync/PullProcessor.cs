@@ -6,7 +6,7 @@ using PortalDoPublicador.Shared.Infrastructure.Sync;
 
 namespace PortalDoPublicador.Client.Infrastructure.Sync;
 
-public class PullProcessor(IndexedDbInterop indexedDb, ClientDbContext context)
+public class PullProcessor(IndexedDbInterop indexedDb, IServiceScopeFactory scopeFactory)
 {
     public async Task ProcessarFilaPullAsync()
     {
@@ -18,6 +18,8 @@ public class PullProcessor(IndexedDbInterop indexedDb, ClientDbContext context)
             return;
         }
 
+        using var scope = scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ClientDbContext>();
         context.ChangeTracker.AutoDetectChangesEnabled = false;
 
         try
@@ -59,8 +61,8 @@ public class PullProcessor(IndexedDbInterop indexedDb, ClientDbContext context)
                     // Invoca o método dinâmico com o Tipo da Entidade e o Tipo da Chave (ex: <Publicador, Guid>)
                     var preLoadMethod = preLoadMethodInfo.MakeGenericMethod(entityType, pkProperty.ClrType);
 
-                    // Passa a lista de IDs e o nome da propriedade primária (ex: "Id")
-                    await (Task)preLoadMethod.Invoke(this, new object[] { idsDoGrupo, pkProperty.Name })!;
+                    // Passa a lista de IDs, o nome da propriedade primária, e o context local
+                    await (Task)preLoadMethod.Invoke(this, new object[] { idsDoGrupo, pkProperty.Name, context })!;
                 }
                 // ====================================================================
 
@@ -136,7 +138,7 @@ public class PullProcessor(IndexedDbInterop indexedDb, ClientDbContext context)
     /// Método auxiliar injetado via reflexão para fazer o download das entidades
     /// em lote de forma strongly-typed, aproveitando as features do EF Core.
     /// </summary>
-    private async Task PrecarregarEntidadesAsync<TEntity, TKey>(IEnumerable<object> ids, string keyName)
+    private async Task PrecarregarEntidadesAsync<TEntity, TKey>(IEnumerable<object> ids, string keyName, ClientDbContext context)
         where TEntity : class
     {
         // 1. Converte o IEnumerable<object> bruto para uma lista fortemente tipada (ex: List<Guid> ou List<int>)

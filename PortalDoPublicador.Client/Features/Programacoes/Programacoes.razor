@@ -1,11 +1,78 @@
-﻿@page "/programacoes"
+@page "/programacoes"
 
 <FluentStack Orientation="Orientation.Vertical" Width="100%" Style="gap: 16px;">
-    <FluentLabel Typo="Typography.PageTitle">Programação</FluentLabel>
+    <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+        <FluentText As="TextTag.H1" Size="TextSize.Size700" Weight="TextWeight.Bold">Programação</FluentText>
 
+        <FluentStack Width="fit-content" Wrap="true">
+            <FluentButton IconEnd="@(new Icons.Regular.Size20.ChevronLeft())" OnClick="PreviousWeek" Appearance="ButtonAppearance.Subtle" Title="Semana Anterior" />
 
+            <div style="position: relative;">
+                <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => _calendarOpen = !_calendarOpen)">
+                    <FluentText Weight="TextWeight.Semibold" Align="TextAlign.Center" Style="min-width: 120px; cursor: pointer;">@WeekDisplay</FluentText>
+                </FluentButton>
+
+                @if (_calendarOpen)
+                {
+                    <div style="position: absolute; top: 100%; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 12px; margin-top: 4px; border-radius: 4px; background-color: var(--neutral-layer-floating, white); box-shadow: 0 4px 8px rgba(0,0,0,0.15); border: 1px solid var(--neutral-stroke-rest, #ccc);">
+                        <FluentCalendar @bind-SelectedDates="SelectedRange"
+                                        SelectDatesHover="SelectOneWeek"
+                                        SelectMode="CalendarSelectMode.Range" />
+                    </div>
+                }
+            </div>
+
+            <FluentButton IconEnd="@(new Icons.Regular.Size20.ChevronRight())" OnClick="NextWeek" Appearance="ButtonAppearance.Subtle" Title="Próxima Semana" />
+        </FluentStack>
+    </FluentStack>
+    
 </FluentStack>
 
 @code {
+    private bool _calendarOpen = false;
+    private DateTime _selectedDate = GetStartOfWeek(DateTime.Today);
 
+    private IEnumerable<DateTime> SelectedRange
+    {
+        get => new[] { _selectedDate, _selectedDate.AddDays(6) };
+        set
+        {
+            if (value != null && value.Any())
+            {
+                _selectedDate = GetStartOfWeek(value.First());
+                _calendarOpen = false; 
+            }
+        }
+    }
+
+    private string WeekDisplay
+    {
+        get
+        {
+            var endOfWeek = _selectedDate.AddDays(6);
+            var culture = new System.Globalization.CultureInfo("pt-BR");
+            string startMonth = culture.DateTimeFormat.GetMonthName(_selectedDate.Month).ToLower();
+            string endMonth = culture.DateTimeFormat.GetMonthName(endOfWeek.Month).ToLower();
+
+            if (_selectedDate.Month == endOfWeek.Month)
+                return $"{_selectedDate.Day}-{endOfWeek.Day} {startMonth}";
+            
+            return $"{_selectedDate.Day} {startMonth.Substring(0, 3)} - {endOfWeek.Day} {endMonth.Substring(0, 3)}";
+        }
+    }
+
+    private static DateTime GetStartOfWeek(DateTime date)
+    {
+        int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return date.AddDays(-1 * diff).Date;
+    }
+
+    private IEnumerable<DateTime> SelectOneWeek(DateTime date)
+    {
+        var startOfWeek = GetStartOfWeek(date);
+        return new[] { startOfWeek, startOfWeek.AddDays(6) };
+    }
+
+    private void PreviousWeek() => _selectedDate = _selectedDate.AddDays(-7);
+    private void NextWeek() => _selectedDate = _selectedDate.AddDays(7);
 }

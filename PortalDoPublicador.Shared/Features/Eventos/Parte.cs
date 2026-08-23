@@ -6,13 +6,13 @@ public class Parte
 {
     public Guid Id { get; set; }
     
-    public required Evento Evento { get; set; }
+    public required Reuniao Reuniao { get; set; }
 
-    public required SecaoReuniao SecaoReuniao { get; set; }
+    public TipoSecaoReuniao SecaoReuniao { get; set; }
 
     public required string Tema { get; set; }
     public int TempoMinutos { get; set; }
-    public string? FonteMateria { get; set; } 
+    public string? Referencia { get; set; } 
     
-    public List<DesignacaoParte> Designacoes { get; set; } = [];
+    public List<Designacao> Designacoes { get; set; } = [];
 }

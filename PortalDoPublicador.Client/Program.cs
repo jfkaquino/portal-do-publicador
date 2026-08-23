@@ -20,12 +20,16 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // 2. Configuração do Entity Framework (SQLite)
-builder.Services.AddDbContext<ClientDbContext>((sp, options) =>
+Action<IServiceProvider, DbContextOptionsBuilder> dbOptions = (sp, options) =>
 {
     var connection = new SqliteWasmConnection("Data Source=app.db");
     options.UseSqliteWasm(connection);
     options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.SqliteEventId.UnexpectedConnectionTypeWarning));
-});
+};
+
+// Usa apenas AddDbContext (que por padrão é Scoped)
+builder.Services.AddDbContext<ClientDbContext>(dbOptions);
+
 builder.Services.AddSqliteWasm();
 builder.Services.AddScoped<SharedDbContext>(sp => sp.GetRequiredService<ClientDbContext>());
 
@@ -63,12 +67,13 @@ builder.Services.AddHttpClient("api", client => client.BaseAddress = new Uri(bui
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("api"));
 
 // 5. Serviços da Aplicação e UI
+builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider, PortalDoPublicador.Client.Infrastructure.Auth.SimpleAuthStateProvider>();
 builder.Services.AddFluentUIComponents();
 builder.Services.AddValidatorsFromAssemblyContaining<App>();
 builder.Services.AddValidatorsFromAssemblyContaining<NovoUsuarioDtoValidator>();
 Mapster.TypeAdapterConfig.GlobalSettings.Scan(typeof(NovoUsuarioDtoConfig).Assembly);
 builder.Services.AddScoped<PullProcessor>();
-builder.Services.AddScoped<IRepository, Repository>();
 
 // 6. Construir o Host da Aplicação
 var host = builder.Build();
