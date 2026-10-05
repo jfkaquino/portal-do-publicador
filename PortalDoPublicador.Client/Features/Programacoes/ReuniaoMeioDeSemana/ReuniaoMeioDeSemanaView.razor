@@ -1,0 +1,226 @@
+@using ReuniaoModel = PortalDoPublicador.Shared.Features.Programacoes.Reuniao
+
+<style>
+    .parte-row-view {
+        width: 100%;
+        min-height: fit-content;
+        height: auto !important;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+        border-radius: 6px;
+        box-sizing: border-box;
+    }
+</style>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="24" Width="100%" Style="padding-bottom: 60px; padding-top: 16px;">
+
+    @* Cabeçalho da Página *@
+    <FluentStack Orientation="Orientation.Horizontal"
+                 HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 Width="100%"
+                 Wrap="true"
+                 Style="border-bottom: 1px solid var(--neutral-stroke-divider-rest); padding-bottom: 20px; gap: 16px;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="8" Width="fit-content">
+            <FluentText As="TextTag.H1" Size="TextSize.Size800" Weight="TextWeight.Bold">Reunião de Meio de Semana</FluentText>
+
+            @* Metadados da Reunião (Data, Timeline e Cânticos) *@
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="16" VerticalAlignment="VerticalAlignment.Center" Style="flex-wrap: wrap;">
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="6" VerticalAlignment="VerticalAlignment.Center" Width="fit-content">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Calendar())" Color="Color.Primary" />
+                    <FluentText Size="TextSize.Size400" Weight="TextWeight.Bold">@Reuniao.DataInicio.ToString("dd/MM/yyyy")</FluentText>
+                </FluentStack>
+
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="6" VerticalAlignment="VerticalAlignment.Center" Width="fit-content">
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Clock())" Color="Color.Default" />
+                    <FluentText Size="TextSize.Size300" Color="Color.Default">
+                        @HorarioInicio.ToString(@"hh\:mm") às @HorarioFim.ToString(@"hh\:mm") (@DuracaoTotalMinutos min)
+                    </FluentText>
+                </FluentStack>
+            </FluentStack>
+        </FluentStack>
+
+        @if (CanEdit)
+        {
+            <FluentButton Appearance="ButtonAppearance.Primary"
+                          IconStart="@(new Icons.Regular.Size20.Edit())"
+                          OnClick="OnIniciarEdicao">
+                Editar
+            </FluentButton>
+        }
+    </FluentStack>
+
+    @* Seções da Reunião com Timeline *@
+    @{
+        var cronograma = ObterCronogramaInicio();
+    }
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="32" Width="100%">
+        @foreach (var secao in Secoes)
+        {
+            var partes = ObterPartesPorSecao(secao);
+            var titulo = ObterTituloSecao(secao);
+            var cor = ObterCorSecao(secao);
+            var tamanho = ObterTamanhoTituloSecao(secao);
+
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Width="100%">
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Width="100%">
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10" VerticalAlignment="VerticalAlignment.Center" Width="fit-content">
+                        @if (cor is not null)
+                        {
+                            <FluentText Weight="TextWeight.Bold" Size="@tamanho" Style="@($"color: {cor};")">@titulo</FluentText>
+                        }
+                        else
+                        {
+                            <FluentText Weight="TextWeight.Bold" Size="@tamanho" Color="Color.Default">@titulo</FluentText>
+                        }
+                    </FluentStack>
+                </FluentStack>
+
+                <FluentDivider Style="margin-bottom: 8px;" />
+
+                @if (partes.Count != 0)
+                {
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="8" Width="100%">
+                        @foreach (var parte in partes)
+                        {
+                            var nomeDesignado = ObterNomeDesignado(parte);
+                            cronograma.TryGetValue(parte.Id, out var horaInicio);
+
+                            <FluentStack Orientation="Orientation.Vertical" VerticalGap="6" Width="100%" Class="parte-row-view">
+                                <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Width="100%">
+                                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="10" Width="auto" Style="flex: 1; min-width: 0; flex-wrap: wrap;">
+                                        @* Indicador de Horário da Timeline *@
+                                        <FluentBadge Style="min-width: 52px; text-align: center; font-weight: 600;">
+                                            @horaInicio.ToString(@"hh\:mm")
+                                        </FluentBadge>
+
+                                        @if (parte.Template == TipoTemplateParte.Cantico)
+                                        {
+                                            <FluentIcon Value="@parte.Template.ObterIcone()" Color="@parte.Template.ObterCorIcone()" />
+                                        }
+
+                                        <FluentText Weight="TextWeight.Bold" Size="TextSize.Size400">
+                                            @(parte.Template == TipoTemplateParte.Cantico && parte.NumeroCantico.HasValue ? $"Cântico {parte.NumeroCantico}" : parte.Tema)
+                                        </FluentText>
+                                        @if (!string.IsNullOrWhiteSpace(parte.Referencia))
+                                        {
+                                            <FluentText Color="Color.Default" Size="TextSize.Size300" Style="font-style: italic;">(@parte.Referencia)</FluentText>
+                                        }
+                                    </FluentStack>
+
+                                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8" Width="fit-content" Style="flex-shrink: 0;">
+                                        @if (!string.IsNullOrWhiteSpace(nomeDesignado))
+                                        {
+                                            <FluentAvatar Name="@nomeDesignado" Size="AvatarSize.Size28" />
+                                            <FluentText Size="TextSize.Size300" Weight="TextWeight.Bold">@nomeDesignado</FluentText>
+                                        }
+                                        else
+                                        {
+                                            <FluentAvatar Size="AvatarSize.Size28" />
+                                            <FluentText Size="TextSize.Size300" Color="Color.Default">Não designado</FluentText>
+                                        }
+                                    </FluentStack>
+                                </FluentStack>
+
+                                @if (parte.TempoMinutos > 0 || !string.IsNullOrWhiteSpace(parte.Descricao))
+                                {
+                                    <FluentText Size="TextSize.Size300" Color="Color.Default" Style="line-height: 1.5; word-break: break-word; padding-left: 62px;">
+                                        @if (parte.TempoMinutos > 0)
+                                        {
+                                            <span style="font-weight: 600; color: var(--neutral-foreground-rest);">(@(parte.TempoMinutos) min)</span>@(" ")
+                                        }
+                                        @parte.Descricao
+                                    </FluentText>
+                                }
+                            </FluentStack>
+                        }
+                    </FluentStack>
+                }
+                else
+                {
+                    <FluentText Color="Color.Default" Align="TextAlign.Center" Style="margin: 16px 0;">Nenhuma parte cadastrada nesta seção.</FluentText>
+                }
+            </FluentStack>
+        }
+    </FluentStack>
+
+</FluentStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public required ReuniaoModel Reuniao { get; set; }
+
+    [Parameter]
+    public string Referencia { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool CanEdit { get; set; } = true;
+
+    [Parameter]
+    public EventCallback OnIniciarEdicao { get; set; }
+
+    private static readonly TipoSecaoReuniao[] Secoes =
+    [
+        TipoSecaoReuniao.Abertura,
+        TipoSecaoReuniao.TesourosDaPalavraDeDeus,
+        TipoSecaoReuniao.FacaSeuMelhorNoMinisterio,
+        TipoSecaoReuniao.NossaVidaCrista,
+        TipoSecaoReuniao.Conclusao
+    ];
+
+    private TimeSpan HorarioInicio => Reuniao.DataInicio.TimeOfDay == TimeSpan.Zero
+        ? new TimeSpan(19, 30, 0)
+        : Reuniao.DataInicio.TimeOfDay;
+
+    private int DuracaoTotalMinutos => Reuniao.Partes.Sum(p => p.TempoMinutos);
+
+    private TimeSpan HorarioFim => HorarioInicio.Add(TimeSpan.FromMinutes(DuracaoTotalMinutos));
+
+    private Dictionary<Guid, TimeSpan> ObterCronogramaInicio()
+    {
+        var cronograma = new Dictionary<Guid, TimeSpan>();
+        var atual = HorarioInicio;
+        foreach (var parte in Reuniao.Partes.OrderBy(p => p.Ordem))
+        {
+            cronograma[parte.Id] = atual;
+            atual = atual.Add(TimeSpan.FromMinutes(parte.TempoMinutos));
+        }
+        return cronograma;
+    }
+
+    private List<Parte> ObterPartesPorSecao(TipoSecaoReuniao secao) =>
+        Reuniao.Partes
+            .Where(p => p.SecaoReuniao == secao)
+            .OrderBy(p => p.Ordem)
+            .ToList();
+
+    private string ObterTituloSecao(TipoSecaoReuniao secao) => secao switch
+    {
+        TipoSecaoReuniao.Abertura => string.IsNullOrWhiteSpace(Referencia) ? "INÍCIO DA REUNIÃO" : Referencia.ToUpper(),
+        TipoSecaoReuniao.TesourosDaPalavraDeDeus => "TESOUROS DA PALAVRA DE DEUS",
+        TipoSecaoReuniao.FacaSeuMelhorNoMinisterio => "FAÇA SEU MELHOR NO MINISTÉRIO",
+        TipoSecaoReuniao.NossaVidaCrista => "NOSSA VIDA CRISTÃ",
+        TipoSecaoReuniao.Conclusao => "FIM DA REUNIÃO",
+        _ => secao.ToString()
+    };
+
+    private static string? ObterCorSecao(TipoSecaoReuniao secao) => secao switch
+    {
+        TipoSecaoReuniao.TesourosDaPalavraDeDeus => "var(--cor-tesouros)",
+        TipoSecaoReuniao.FacaSeuMelhorNoMinisterio => "var(--cor-ministerio)",
+        TipoSecaoReuniao.NossaVidaCrista => "var(--cor-vida-crista)",
+        _ => null
+    };
+
+    private static TextSize ObterTamanhoTituloSecao(TipoSecaoReuniao secao) => secao switch
+    {
+        TipoSecaoReuniao.Abertura or TipoSecaoReuniao.Conclusao => TextSize.Size500,
+        _ => TextSize.Size600
+    };
+
+    private static string? ObterNomeDesignado(Parte parte)
+    {
+        var designacao = parte.Designacoes.FirstOrDefault();
+        return designacao?.Usuario?.NomeExibicao ?? designacao?.Usuario?.NomeCompleto;
+    }
+}

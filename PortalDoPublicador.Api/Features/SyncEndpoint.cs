@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using PortalDoPublicador.Api.Infrastructure.Data;
 using PortalDoPublicador.Shared.Infrastructure.Sync;
@@ -80,7 +80,7 @@ public static class SyncEndpoint
             }
 
             // 3. PROCESSAMENTO DO PULL (O que o servidor precisa mandar de volta)
-            var payloadsParaDevolver = new List<SyncPayload>();
+            List<SyncPayload> payloadsParaDevolver = [];
 
             // TODO: Lógica para buscar registros alterados no banco desde requisicao.LastSync
 

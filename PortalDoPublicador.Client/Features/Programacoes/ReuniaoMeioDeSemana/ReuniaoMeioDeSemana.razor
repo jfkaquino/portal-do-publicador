@@ -1,5 +1,36 @@
 @page "/programacoes/reuniao-meio-de-semana"
+@using ReuniaoModel = PortalDoPublicador.Shared.Features.Programacoes.Reuniao
+@inject IDialogService DialogService
+
+<PageTitle>Reunião de Meio de Semana</PageTitle>
+
+@if (isEditing)
+{
+    <ReuniaoMeioDeSemanaEditor Reuniao="reuniao"
+                               @bind-Referencia="referencia"
+                               OnSalvar="SalvarReuniaoAsync"
+                               OnCancelar="CancelarEdicao" />
+}
+else
+{
+    <ReuniaoMeioDeSemanaView Reuniao="reuniao"
+                             Referencia="@referencia"
+                             CanEdit="true"
+                             OnIniciarEdicao="IniciarEdicao" />
+}
 
 @code {
+    private bool isEditing;
+    private ReuniaoModel reuniao = ReuniaoMeioDeSemanaMock.CriarPadrao();
+    private string referencia = "JEREMIAS 29-30";
 
+    private void IniciarEdicao() => isEditing = true;
+
+    private void CancelarEdicao() => isEditing = false;
+
+    private async Task SalvarReuniaoAsync()
+    {
+        isEditing = false;
+        await DialogService.ShowSuccessAsync("Programação da reunião salva com sucesso!");
+    }
 }

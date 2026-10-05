@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
-using System.Security.Claims;
 
 namespace PortalDoPublicador.Client.Infrastructure.Auth;
 
@@ -36,7 +36,7 @@ public class SimpleAuthStateProvider(IJSRuntime jsRuntime) : AuthenticationState
     {
         var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.Name, "UsuarioLocal") }, "offline_auth");
         var user = new ClaimsPrincipal(identity);
-        
+
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
     }
 

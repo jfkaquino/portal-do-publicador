@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PortalDoPublicador.Shared.Features.Designacoes;
-using PortalDoPublicador.Shared.Features.Eventos;
-using PortalDoPublicador.Shared.Features.Perfis;
+using PortalDoPublicador.Shared.Features.Programacoes;
+using PortalDoPublicador.Shared.Features.Publicadores;
 
 namespace PortalDoPublicador.Shared.Infrastructure.Data;
 
@@ -15,10 +15,8 @@ public class SharedDbContext(DbContextOptions options) : DbContext(options)
 
     // Eventos
     public DbSet<Reuniao> Reunioes { get; set; }
-    public DbSet<SaidaServicoCampo> SaidasServicoCampo { get; set; }
-    
+    public DbSet<SaidaCampo> SaidasServicoCampo { get; set; }
     public DbSet<Parte> Partes { get; set; }
-    public DbSet<AssistenciaReuniao> Assistencias { get; set; }
 
     // Designações
     public DbSet<Designacao> Designacoes { get; set; }
@@ -28,13 +26,7 @@ public class SharedDbContext(DbContextOptions options) : DbContext(options)
     {
         base.OnModelCreating(modelBuilder);
 
-        // 1. Configurar Relação 1:1 entre Reuniao e Assistencia
-        modelBuilder.Entity<Reuniao>()
-            .HasOne(r => r.Assistencia)
-            .WithOne(a => a.Reuniao)
-            .HasForeignKey<AssistenciaReuniao>("ReuniaoId");
-
-        // 2. Configurar relações entre Grupo e Usuario para evitar ambiguidade
+        // 1. Configurar relações entre Grupo e Usuario para evitar ambiguidade
         modelBuilder.Entity<Grupo>()
             .HasOne(g => g.Superintendente)
             .WithMany()
@@ -49,12 +41,21 @@ public class SharedDbContext(DbContextOptions options) : DbContext(options)
             .HasMany(g => g.Membros)
             .WithOne(u => u.Grupo)
             .HasForeignKey("GrupoId");
-            
-        // 3. Auto-relacionamento de Chefe de Família
+
+        // 2. Auto-relacionamento de Chefe de Família
         modelBuilder.Entity<Usuario>()
             .HasOne(u => u.ChefeFamilia)
             .WithMany()
             .HasForeignKey(u => u.ChefeFamiliaId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // 3. Configurações de Designação (TPH - Herança)
+        modelBuilder.Entity<Designacao>()
+            .HasDiscriminator<string>("Contexto")
+            .HasValue<DesignacaoReuniao>("Reuniao")
+            .HasValue<DesignacaoParte>("Parte")
+            .HasValue<DesignacaoCampo>("Campo")
+            .HasValue<DesignacaoDiscurso>("Discurso");
+
     }
 }

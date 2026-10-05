@@ -1,0 +1,164 @@
+@using PortalDoPublicador.Client.Infrastructure
+@using PortalDoPublicador.Client.Infrastructure.Data
+@using PortalDoPublicador.Shared.Extensions
+@using PortalDoPublicador.Client.Infrastructure
+@using PortalDoPublicador.Client.Infrastructure.Validation
+@using Mapster
+@inject IServiceScopeFactory ScopeFactory
+
+<style>
+    fluent-field {
+        margin: 0 !important;
+    }
+</style>
+
+<EditForm Model="@novoUsuario" OnValidSubmit="SalvarUsuarioAsync">
+    <FluentValidationValidator />
+
+    <FluentDialogBody FixedHeaderFooter="true">
+        <ChildContent>
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="16">
+
+                @* Seção: Dados Pessoais *@
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentText Size="TextSize.Size300" Weight="TextWeight.Bold">Dados Pessoais</FluentText>
+
+                    <FluentGrid Spacing="2">
+                        <FluentGridItem Xs="12" Sm="7">
+                            <FluentTextInput @bind-Value="novoUsuario.NomeCompleto" Label="Nome Completo" Placeholder="Ex: João da Silva" Required="false" ValidationFieldFor="@(() => novoUsuario.NomeCompleto)" Style="width: 100%;" />
+                        </FluentGridItem>
+
+                        <FluentGridItem Xs="12" Sm="5">
+                            <FluentTextInput @bind-Value="novoUsuario.NomeExibicao" Label="Nome de Exibição (Curto)" Placeholder="Ex: João Silva" Required="false" ValidationFieldFor="@(() => novoUsuario.NomeExibicao)" Style="width: 100%;" />
+                        </FluentGridItem>
+
+                        <FluentGridItem Xs="12" Sm="6">
+                            <FluentDatePicker @bind-Value="novoUsuario.DataNascimento" Label="Data de Nascimento" Required="false" ValidationFieldFor="@(() => novoUsuario.DataNascimento)" Style="width: 100%;" />
+                        </FluentGridItem>
+
+                        <FluentGridItem Xs="12" Sm="6">
+                            <FluentRadioGroup @bind-Value="novoUsuario.IsMasculino" Label="Sexo" Orientation="Orientation.Horizontal" ValidationFieldFor="@(() => novoUsuario.IsMasculino)" Style="width: 100%;">
+                                <FluentRadio Value="@(true)" Label="Masculino" />
+                                <FluentRadio Value="@(false)" Label="Feminino" />
+                            </FluentRadioGroup>
+                        </FluentGridItem>
+                    </FluentGrid>
+                </FluentStack>
+
+                <FluentDivider />
+
+                @* Seção: Contato e Acesso *@
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentText Size="TextSize.Size300" Weight="TextWeight.Bold">Contato e Acesso</FluentText>
+
+                    <FluentGrid Spacing="2">
+                        <FluentGridItem Xs="12" Sm="8">
+                            <FluentTextInput @bind-Value="novoUsuario.Email" Label="E-mail (Opcional - Necessário para login)" TextFieldType="TextFieldType.Email" Placeholder="exemplo@dominio.com" Required="false" ValidationFieldFor="@(() => novoUsuario.Email)" Style="width: 100%;" />
+                        </FluentGridItem>
+
+                        <FluentGridItem Xs="12" Sm="4">
+                            <FluentTextInput @bind-Value="novoUsuario.Telefone" Label="Telefone" TextFieldType="TextFieldType.Tel" Placeholder="(00) 00000-0000" Required="false" ValidationFieldFor="@(() => novoUsuario.Telefone)" Style="width: 100%;" />
+                        </FluentGridItem>
+
+                        <FluentGridItem Xs="12">
+                            <FluentTextInput @bind-Value="novoUsuario.Endereco" Label="Endereço" Placeholder="Rua, número, bairro..." Required="false" ValidationFieldFor="@(() => novoUsuario.Endereco)" Style="width: 100%;" />
+                        </FluentGridItem>
+                    </FluentGrid>
+                </FluentStack>
+
+                <FluentDivider />
+
+                @* Seção: Informações Teocráticas *@
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentText Size="TextSize.Size300" Weight="TextWeight.Bold">Informações Teocráticas</FluentText>
+
+                    <FluentGrid Spacing="2">
+                        <FluentGridItem Xs="12" Sm="6">
+                            <FluentSelect TOption="SituacaoEspiritual" TValue="SituacaoEspiritual" Items="@situacoesEspirituais" @bind-Value="novoUsuario.SituacaoEspiritual" Label="Situação Espiritual" OptionText="@(x => x.GetDisplayName())" ValidationFieldFor="@(() => novoUsuario.SituacaoEspiritual)" Style="width: 100%;" />
+                        </FluentGridItem>
+
+                        <FluentGridItem Xs="12" Sm="6">
+                            <FluentSelect TOption="ModalidadePioneiro" TValue="ModalidadePioneiro" Items="@modalidadesPioneiro" @bind-Value="novoUsuario.ModalidadePioneiro" Label="Modalidade de Pioneiro" OptionText="@(x => x.GetDisplayName())" ValidationFieldFor="@(() => novoUsuario.ModalidadePioneiro)" Style="width: 100%;" />
+                        </FluentGridItem>
+                    </FluentGrid>
+                </FluentStack>
+
+            </FluentStack>
+        </ChildContent>
+
+        <ActionTemplate>
+            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="CancelarAsync">Cancelar</FluentButton>
+            <FluentButton Type="ButtonType.Submit" Appearance="ButtonAppearance.Primary" Loading="@isSalvando">Salvar</FluentButton>
+        </ActionTemplate>
+    </FluentDialogBody>
+</EditForm>
+
+@code {
+    [CascadingParameter]
+    public required IDialogInstance Dialog { get; set; }
+
+    [Parameter]
+    public Usuario? UsuarioParaEditar { get; set; }
+
+    private NovoUsuarioDto novoUsuario = new();
+    private bool isSalvando;
+    private string? errorMessage;
+
+    private readonly IEnumerable<SituacaoEspiritual> situacoesEspirituais = Enum.GetValues<SituacaoEspiritual>();
+    private readonly IEnumerable<ModalidadePioneiro> modalidadesPioneiro = Enum.GetValues<ModalidadePioneiro>();
+
+    protected override void OnInitialized()
+    {
+        if (UsuarioParaEditar is not null)
+        {
+            novoUsuario = UsuarioParaEditar.Adapt<NovoUsuarioDto>();
+        }
+    }
+
+    private async Task CancelarAsync() => await Dialog.CancelAsync();
+
+    private async Task SalvarUsuarioAsync()
+    {
+        try
+        {
+            isSalvando = true;
+            errorMessage = null;
+
+            using var scope = ScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ClientDbContext>();
+
+            if (novoUsuario.Id is not null && novoUsuario.Id != Guid.Empty)
+            {
+                var usuarioExistente = await context.Usuarios.FindAsync(novoUsuario.Id.Value);
+                if (usuarioExistente is null)
+                {
+                    errorMessage = "Usuário não encontrado.";
+                    return;
+                }
+
+                novoUsuario.Adapt(usuarioExistente);
+
+                context.Usuarios.Update(usuarioExistente);
+                await context.SaveChangesAsync();
+                await Dialog.CloseAsync(DialogResult.Ok(usuarioExistente));
+            }
+            else
+            {
+                var usuario = novoUsuario.Adapt<Usuario>();
+                usuario.Id = Guid.NewGuid();
+                
+                context.Usuarios.Add(usuario);
+                await context.SaveChangesAsync();
+                await Dialog.CloseAsync(DialogResult.Ok(usuario));
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao salvar: {ex.Message}";
+        }
+        finally
+        {
+            isSalvando = false;
+        }
+    }
+}

@@ -1,0 +1,130 @@
+@page "/congregacao/usuarios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using Microsoft.EntityFrameworkCore
+@using PortalDoPublicador.Client.Infrastructure
+@using PortalDoPublicador.Client.Infrastructure.Data
+@using PortalDoPublicador.Shared.Extensions
+@inject IServiceScopeFactory ScopeFactory
+@inject IDialogService DialogService
+
+<PageTitle>Usuários</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center" Width="100%">
+    
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Style="width: 100%;">
+        <h1>Usuários</h1>
+    </FluentStack>
+
+    <FluentStack Orientation="Orientation.Horizontal"
+                 HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 Width="100%">
+
+    <FluentTextInput @bind-Value="_busca"
+                     Name="Buscar"
+                     Placeholder="Buscar"
+                     Immediate="true">
+        <StartTemplate>
+            <FluentIcon Value="@(new Icons.Regular.Size20.Search())" />
+        </StartTemplate>
+    </FluentTextInput>
+
+    <FluentButton Appearance="ButtonAppearance.Primary"
+                    IconStart="@(new Icons.Regular.Size20.PersonAdd())"
+                      OnClick="@(() => AbrirModalAsync())">
+        Novo Usuário
+    </FluentButton>
+
+</FluentStack>
+
+    <FluentDataGrid TGridItem="Usuario"
+                    ItemsProvider="@usuarioProvider"
+                    @ref="grid"
+                    DisplayMode="DataGridDisplayMode.Table"
+                    Style="width: 100%;"
+                    RowSize="DataGridRowSize.Medium"
+                    ShowHover="true"
+                    RowStyle="@(user => "cursor: pointer;")"
+                    OnRowClick="TratarCliqueLinhaAsync">
+        <ChildContent>
+            <PropertyColumn Property="@(p => p.NomeCompleto)" Title="Nome" Sortable="true" />
+            <PropertyColumn Property="@(p => p.Email)" Title="E-mail" Sortable="true" />
+            <PropertyColumn Property="@(p => p.SituacaoEspiritual.GetDisplayName())" Title="Situação Espiritual" Sortable="true" />
+            <PropertyColumn Property="@(p => p.Telefone)" Title="Telefone" Sortable="true" />
+        </ChildContent>
+
+        <LoadingContent>
+            <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" Style="gap: 1rem; padding: 2rem;">
+                <FluentSpinner />
+                <FluentText As="TextTag.H2" Size="TextSize.Size300">Carregando usuários...</FluentText>
+            </FluentStack>
+        </LoadingContent>
+
+        <EmptyContent>
+            <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center" Style="gap: 1rem; padding: 2rem;">
+                <FluentIcon Value="@(new Icons.Regular.Size24.CollectionsEmpty())" />
+                <FluentText As="TextTag.H2" Size="TextSize.Size300">Sem resultados.</FluentText>
+            </FluentStack>
+        </EmptyContent>
+    </FluentDataGrid>
+
+</FluentStack>
+
+@code {
+    private GridItemsProvider<Usuario> usuarioProvider = default!;
+    private FluentDataGrid<Usuario>? grid;
+	private string _busca = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        usuarioProvider = async req =>
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ClientDbContext>();
+            
+            var query = context.Usuarios.AsNoTracking();
+            
+            if (!string.IsNullOrWhiteSpace(_busca))
+            {
+                var upperBusca = _busca.ToUpper();
+                query = query.Where(u => u.NomeCompleto.ToUpper().Contains(upperBusca) || (u.Email != null && u.Email.ToUpper().Contains(upperBusca)));
+            }
+
+            var count = await query.CountAsync(req.CancellationToken);
+            var items = await query.Skip(req.StartIndex).Take(req.Count ?? 15).ToListAsync(req.CancellationToken);
+
+            return GridItemsProviderResult.From(items, count);
+        };
+    }
+
+    private async Task TratarCliqueLinhaAsync(FluentDataGridRow<Usuario> row)
+    {
+        if (row.Item is not null && row.RowType == DataGridRowType.Default)
+        {
+            await AbrirModalAsync(row.Item);
+        }
+    }
+
+    private async Task AbrirModalAsync(Usuario? usuario = null)
+    {
+        var result = await DialogService.ShowDialogAsync<UsuarioDialog>(options =>
+        {
+			options.Header.Title = usuario is null ? "Novo Usuário" : "Editar Usuário";
+            options.Header.CloseAction.Visible = true;
+            options.Modal = true;
+            options.Width = "680px";
+            if (usuario is not null)
+            {
+                options.Parameters.Add(nameof(UsuarioDialog.UsuarioParaEditar), usuario);
+            }
+        });
+
+        if (!result.Cancelled && result.Value is not null)
+        {
+            if (grid is not null)
+            {
+                await grid.RefreshDataAsync();
+            }
+        }
+    }
+}

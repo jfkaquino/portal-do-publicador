@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using DnetIndexedDb;
 using Microsoft.EntityFrameworkCore;
+using PortalDoPublicador.Client.Infrastructure.Data;
 using PortalDoPublicador.Shared.Infrastructure.Sync;
 
 namespace PortalDoPublicador.Client.Infrastructure.Sync;
@@ -62,7 +63,7 @@ public class PullProcessor(IndexedDbInterop indexedDb, IServiceScopeFactory scop
                     var preLoadMethod = preLoadMethodInfo.MakeGenericMethod(entityType, pkProperty.ClrType);
 
                     // Passa a lista de IDs, o nome da propriedade primária, e o context local
-                    await (Task)preLoadMethod.Invoke(this, new object[] { idsDoGrupo, pkProperty.Name, context })!;
+                    await (Task)preLoadMethod.Invoke(this, [idsDoGrupo, pkProperty.Name, context])!;
                 }
                 // ====================================================================
 

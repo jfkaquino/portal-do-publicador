@@ -7,9 +7,10 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.FluentUI.AspNetCore.Components;
 using PortalDoPublicador.Client;
-using PortalDoPublicador.Client.Infrastructure;
+using PortalDoPublicador.Client.Infrastructure.Data;
 using PortalDoPublicador.Client.Infrastructure.Sync;
-using PortalDoPublicador.Shared.Features.Perfis;
+using PortalDoPublicador.Shared.Features.Publicadores.DTOs;
+using PortalDoPublicador.Shared.Features.Publicadores.Validators;
 using PortalDoPublicador.Shared.Infrastructure.Data;
 using SqliteWasmBlazor;
 
@@ -43,19 +44,19 @@ builder.Services.AddIndexedDbDatabase<IndexedDbInterop>(options =>
     var pushStore = model.AddStore("SyncPushQueue").WithKey("id");
     pushStore.Indexes = new List<IndexedDbIndex>
     {
-        new IndexedDbIndex { Name = "Timestamp" }
+        new() { Name = "Timestamp" }
     };
 
     var pullStore = model.AddStore("SyncPullQueue").WithAutoIncrementingKey("id");
     pullStore.Indexes = new List<IndexedDbIndex>
     {
-        new IndexedDbIndex { Name = "Timestamp" }
+        new() { Name = "Timestamp" }
     };
 
     var configStore = model.AddStore("Configuracoes").WithKey("chave");
     configStore.Indexes = new List<IndexedDbIndex>
     {
-        new IndexedDbIndex { Name = "dummy" }
+        new() { Name = "dummy" }
     };
 
     options.UseDatabase(model);
@@ -74,6 +75,9 @@ builder.Services.AddValidatorsFromAssemblyContaining<App>();
 builder.Services.AddValidatorsFromAssemblyContaining<NovoUsuarioDtoValidator>();
 Mapster.TypeAdapterConfig.GlobalSettings.Scan(typeof(NovoUsuarioDtoConfig).Assembly);
 builder.Services.AddScoped<PullProcessor>();
+
+// Configura o FluentValidation globalmente para pt-BR
+ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.CultureInfo("pt-BR");
 
 // 6. Construir o Host da Aplicação
 var host = builder.Build();

@@ -1,0 +1,169 @@
+﻿@using PortalDoPublicador.Shared.Features.Designacoes.Enums
+@using PortalDoPublicador.Shared.Features.Designacoes
+
+<FluentDialogBody FixedHeaderFooter="true">
+    <TitleTemplate>
+        <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <FluentIcon Value="@(new Icons.Regular.Size20.Edit())" />
+            <FluentText Weight="TextWeight.Bold" Size="TextSize.Size400">Editar Parte</FluentText>
+        </FluentStack>
+    </TitleTemplate>
+
+    <ChildContent>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="16">
+            <FluentSelect TOption="TipoTemplateParte"
+                          TValue="TipoTemplateParte"
+                          Items="@(Enum.GetValues<TipoTemplateParte>())"
+                          Value="@Content.Template"
+                          ValueChanged="@TratarAlteracaoTemplate"
+                          Label="Template da Parte"
+                          Width="100%">
+                <OptionTemplate Context="template">
+                    <FluentIcon Value="@template.ObterIcone()" Color="@template.ObterCorIcone()" Slot="start" Style="margin-right: 8px;" />
+                    @template.ToString()
+                </OptionTemplate>
+            </FluentSelect>
+
+            @if (Content.Template == TipoTemplateParte.Cantico)
+            {
+                <FluentNumberInput @bind-Value="Content.NumeroCantico"
+                                   Label="Número do Cântico"
+                                   Min="1"
+                                   Max="158"
+                                   Width="100%">
+                    <StartTemplate>
+                        <FluentIcon Value="@(new Icons.Regular.Size16.MusicNote2())" />
+                    </StartTemplate>
+                </FluentNumberInput>
+            }
+
+            <FluentTextInput @bind-Value="Content.Tema"
+                             Label="Tema / Título"
+                             Placeholder="Ex: Tesouros da Palavra de Deus"
+                             Required="true"
+                             Width="100%" />
+
+            <FluentNumberInput @bind-Value="Content.TempoMinutos"
+                               Label="Duração (Minutos)"
+                               Min="1"
+                               Max="120"
+                               Width="100%">
+                <StartTemplate>
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Clock())" />
+                </StartTemplate>
+            </FluentNumberInput>
+
+            <FluentTextInput @bind-Value="Content.Referencia"
+                             Label="Referência / Fonte"
+                             Placeholder="Ex: Apostila da Reunião Vida e Ministério, pág. 2"
+                             Width="100%">
+                <StartTemplate>
+                    <FluentIcon Value="@(new Icons.Regular.Size16.BookOpen())" />
+                </StartTemplate>
+            </FluentTextInput>
+
+            <FluentTextArea @bind-Value="Content.Descricao"
+                            Label="Descrição / Anotações"
+                            Placeholder="Anotações e detalhes adicionais..."
+                            Resize="TextAreaResize.Vertical"
+                            AutoResize="true"
+                            Width="100%" />
+
+            <FluentSelect TOption="string"
+                          TValue="string"
+                          Items="@listaIrmaosMock"
+                          @bind-Value="IrmaoDesignadoSelecionado"
+                          Label="Irmão Designado"
+                          Placeholder="Não designado"
+                          Width="100%" />
+        </FluentStack>
+    </ChildContent>
+
+    <ActionTemplate>
+        <FluentButton IconStart="@(new Icons.Regular.Size16.Delete())"
+                      Appearance="ButtonAppearance.Subtle"
+                      Color="var(--error, #d13438)"
+                      OnClick="RemoverAsync">
+            Excluir Parte
+        </FluentButton>
+
+        <FluentSpacer />
+
+        <FluentButton Appearance="ButtonAppearance.Subtle"
+                      OnClick="CancelarAsync">
+            Cancelar
+        </FluentButton>
+
+        <FluentButton Appearance="ButtonAppearance.Primary"
+                      IconStart="@(new Icons.Regular.Size16.Save())"
+                      OnClick="SalvarAsync">
+            Salvar
+        </FluentButton>
+    </ActionTemplate>
+</FluentDialogBody>
+
+@code {
+    [Parameter]
+    public required Parte Content { get; set; }
+
+    [CascadingParameter]
+    public required IDialogInstance Dialog { get; set; }
+
+    private readonly List<string> listaIrmaosMock =
+    [
+        "Carlos Silva",
+        "Eduardo Santos",
+        "Felipe Oliveira",
+        "Gabriel Souza",
+        "Jorge Aquino",
+        "Lucas Mendes",
+        "Mateus Rocha",
+        "Rodrigo Lima"
+    ];
+
+    private string? IrmaoDesignadoSelecionado
+    {
+        get
+        {
+            var usuario = Content.Designacoes.FirstOrDefault()?.Usuario;
+            return usuario?.NomeExibicao ?? usuario?.NomeCompleto;
+        }
+        set
+        {
+            Content.Designacoes.Clear();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                Content.Designacoes.Add(new()
+                {
+                    Id = Guid.NewGuid(),
+                    Parte = Content,
+                    Tipo = new() { Id = Guid.NewGuid(), Nome = "Parte", Categoria = CategoriaDesignacao.Parte },
+                    Usuario = new()
+                    {
+                        Id = Guid.NewGuid(),
+                        NomeCompleto = value,
+                        NomeExibicao = value,
+                        Email = $"{value.ToLower().Replace(" ", ".")}@congregacao.org",
+                        Telefone = "(11) 99999-9999",
+                        Endereco = "Local",
+                        SenhaHash = "hash"
+                    }
+                });
+            }
+        }
+    }
+
+    private async Task SalvarAsync() => await Dialog.CloseAsync(Content);
+
+    private async Task CancelarAsync() => await Dialog.CancelAsync();
+
+    private async Task RemoverAsync() => await Dialog.CloseAsync("REMOVER");
+
+    private void TratarAlteracaoTemplate(TipoTemplateParte template)
+    {
+        Content.Template = template;
+        var padroes = template.ObterValoresPadrao();
+        Content.Tema = padroes.Tema;
+        Content.TempoMinutos = padroes.Minutos;
+    }
+}

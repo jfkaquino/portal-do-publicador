@@ -108,3 +108,20 @@ input, textarea {
 .loading-progress-text:after {
     content: var(--blazor-load-percentage-text, "Loading");
 }
+
+:root {
+    --cor-tesouros: #3c7f8b;
+    --cor-ministerio: #d68f00;
+    --cor-vida-crista: #bf2f13;
+}
+
+/* FluentSortableList: permitir crescimento dinâmico de altura */
+fluent-sortable-list,
+.fluent-sortable-list,
+fluent-sortable-list > div,
+.fluent-sortable-list-item,
+.sortable-item {
+    height: auto !important;
+    min-height: fit-content !important;
+    overflow: visible !important;
+}

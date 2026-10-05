@@ -1,0 +1,35 @@
+/* Garante que o wrapper criado pelo Fluent UI para o SortableList permita crescimento dinâmico */
+::deep fluent-sortable-list > div,
+::deep .fluent-sortable-list-item,
+::deep .sortable-item {
+    height: auto !important;
+    min-height: fit-content !important;
+    width: 100% !important;
+}
+
+.parte-row {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    min-height: fit-content;
+    height: auto !important;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+    border-radius: 6px;
+    transition: background-color 0.2s, border-color 0.2s;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.parte-row:hover {
+    background-color: var(--neutral-fill-hover);
+}
+
+.drag-handle {
+    cursor: grab;
+    margin-right: 14px;
+    margin-top: 2px;
+    color: var(--neutral-foreground-hint);
+    display: flex;
+    align-items: center;
+}

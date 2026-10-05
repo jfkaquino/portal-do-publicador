@@ -1,0 +1,9 @@
+.parte-row-view {
+    width: 100%;
+    min-height: fit-content;
+    height: auto !important;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+    border-radius: 6px;
+    box-sizing: border-box;
+}

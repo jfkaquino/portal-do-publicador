@@ -1,4 +1,4 @@
-﻿namespace PortalDoPublicador.Shared.Infrastructure.Sync;
+namespace PortalDoPublicador.Shared.Infrastructure.Sync;
 
 public class SyncPayload
 {

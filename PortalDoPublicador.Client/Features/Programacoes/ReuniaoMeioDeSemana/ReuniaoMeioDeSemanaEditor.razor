@@ -1,0 +1,403 @@
+@using ReuniaoModel = PortalDoPublicador.Shared.Features.Programacoes.Reuniao
+@inject IDialogService DialogService
+
+<style>
+    fluent-sortable-list,
+    .fluent-sortable-list,
+    fluent-sortable-list > div,
+    .fluent-sortable-list-item,
+    .sortable-item {
+        height: auto !important;
+        min-height: fit-content !important;
+        width: 100% !important;
+        overflow: visible !important;
+    }
+
+    .parte-row {
+        display: flex;
+        align-items: flex-start;
+        width: 100%;
+        min-height: fit-content;
+        height: auto !important;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+        border-radius: 6px;
+        transition: background-color 0.2s, border-color 0.2s;
+        box-sizing: border-box;
+        cursor: pointer;
+    }
+
+    .parte-row:hover {
+        background-color: var(--neutral-fill-hover);
+    }
+
+    .drag-handle {
+        cursor: grab;
+        margin-right: 14px;
+        margin-top: 2px;
+        color: var(--neutral-foreground-hint);
+        display: flex;
+        align-items: center;
+    }
+</style>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="24" Width="100%" Style="padding-bottom: 60px; padding-top: 16px;">
+
+    @* Cabeçalho da Página de Edição *@
+    <FluentStack Orientation="Orientation.Horizontal"
+                 HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 Width="100%"
+                 Wrap="true"
+                 Style="border-bottom: 1px solid var(--neutral-stroke-divider-rest); padding-bottom: 20px; gap: 16px;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6" Width="fit-content">
+            <FluentText As="TextTag.H1" Size="TextSize.Size800" Weight="TextWeight.Bold">Editar Reunião de Meio de Semana</FluentText>
+            
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="6" VerticalAlignment="VerticalAlignment.Center" Width="fit-content">
+                <FluentIcon Value="@(new Icons.Regular.Size16.Clock())" Color="Color.Default" />
+                <FluentText Size="TextSize.Size300" Color="Color.Default">
+                    Previsão da Timeline: <strong>@HorarioInicio.ToString(@"hh\:mm") às @HorarioFim.ToString(@"hh\:mm")</strong> (@DuracaoTotalMinutos min)
+                </FluentText>
+            </FluentStack>
+        </FluentStack>
+
+        <FluentStack Orientation="Orientation.Horizontal"
+                     HorizontalAlignment="HorizontalAlignment.Right"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     HorizontalGap="8"
+                     Width="fit-content">
+            <FluentButton Appearance="ButtonAppearance.Subtle"
+                          OnClick="OnCancelar">
+                Cancelar
+            </FluentButton>
+
+            <FluentButton Appearance="ButtonAppearance.Primary"
+                          IconStart="@(new Icons.Regular.Size20.Save())"
+                          OnClick="OnSalvar">
+                Salvar
+            </FluentButton>
+        </FluentStack>
+    </FluentStack>
+
+    @* Bloco de Configurações Gerais da Reunião (Data, Horário, Leitura e Cânticos) *@
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="16" Width="100%" Style="background: var(--neutral-layer-2); padding: 20px; border-radius: 8px;">
+        <FluentText Size="TextSize.Size400" Weight="TextWeight.Bold">Informações e Cânticos da Reunião</FluentText>
+
+        @* Linha 1: Data, Horário e Leitura Bíblica *@
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="16" VerticalAlignment="VerticalAlignment.Bottom" Style="flex-wrap: wrap;">
+            <FluentDatePicker @bind-Value="DataInicioNullable"
+                              Label="Data da Reunião"
+                              Style="min-width: 150px;" />
+
+            <FluentTextInput Value="@HorarioInicioString"
+                             ValueChanged="@TratarHorarioInicioChanged"
+                             Label="Horário de Início"
+                             Placeholder="19:30"
+                             Style="min-width: 140px; width: 140px;">
+                <StartTemplate>
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Clock())" />
+                </StartTemplate>
+            </FluentTextInput>
+
+            <FluentTextInput Value="@Referencia"
+                             ValueChanged="@ReferenciaChanged"
+                             Label="Leitura Bíblica Semanal"
+                             Placeholder="Ex: JEREMIAS 29-30"
+                             Style="min-width: 200px; flex: 1;" />
+        </FluentStack>
+    </FluentStack>
+
+    @* Seções da Reunião com Suporte a Drag-and-Drop, Edição e Timeline *@
+    @{
+        var cronograma = ObterCronogramaInicio();
+    }
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="32" Width="100%">
+        @foreach (var secao in Secoes)
+        {
+            var partes = ObterPartesPorSecao(secao);
+            var titulo = ObterTituloSecao(secao);
+            var cor = ObterCorSecao(secao);
+            var tamanho = ObterTamanhoTituloSecao(secao);
+
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Width="100%">
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Width="100%">
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10" VerticalAlignment="VerticalAlignment.Center" Width="fit-content">
+                        @if (cor is not null)
+                        {
+                            <FluentText Weight="TextWeight.Bold" Size="@tamanho" Style="@($"color: {cor};")">@titulo</FluentText>
+                        }
+                        else
+                        {
+                            <FluentText Weight="TextWeight.Bold" Size="@tamanho" Color="Color.Default">@titulo</FluentText>
+                        }
+                    </FluentStack>
+
+                    <FluentButton Appearance="ButtonAppearance.Subtle"
+                                  IconStart="@(new Icons.Regular.Size16.Add())"
+                                  OnClick="@(() => AdicionarParteAsync(secao, TipoTemplateParte.Personalizada))">
+                        Adicionar
+                    </FluentButton>
+                </FluentStack>
+
+                <FluentDivider Style="margin-bottom: 8px;" />
+
+                @if (partes.Count != 0)
+                {
+                    <FluentSortableList Items="@partes"
+                                        OnUpdate="@((FluentSortableListEventArgs e) => TratarReordenacao(secao, e))"
+                                        TItem="Parte"
+                                        Style="width: 100%;">
+                        <ItemTemplate Context="parte">
+                            @{
+                                var nomeDesignado = ObterNomeDesignado(parte);
+                                cronograma.TryGetValue(parte.Id, out var horaInicio);
+                            }
+                            <div class="parte-row is-editing" @onclick="@(() => AbrirPainelEdicaoAsync(parte))">
+                                <div class="drag-handle">
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.ReOrderDotsVertical())" />
+                                </div>
+
+                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="6" Width="100%" Style="flex: 1; min-width: 0;">
+                                    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween" VerticalAlignment="VerticalAlignment.Center" Width="100%">
+                                        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="10" Width="auto" Style="flex: 1; min-width: 0; flex-wrap: wrap;">
+                                            @* Indicador de Horário da Timeline *@
+                                            <FluentBadge Style="min-width: 52px; text-align: center; font-weight: 600;">
+                                                @horaInicio.ToString(@"hh\:mm")
+                                            </FluentBadge>
+
+                                            @if (parte.Template == TipoTemplateParte.Cantico)
+                                            {
+                                                <FluentIcon Value="@parte.Template.ObterIcone()" Color="@parte.Template.ObterCorIcone()" />
+                                            }
+
+                                            <FluentText Weight="TextWeight.Bold" Size="TextSize.Size400">
+                                                @(parte.Template == TipoTemplateParte.Cantico && parte.NumeroCantico.HasValue ? $"Cântico {parte.NumeroCantico}" : parte.Tema)
+                                            </FluentText>
+                                            @if (!string.IsNullOrWhiteSpace(parte.Referencia))
+                                            {
+                                                <FluentText Color="Color.Default" Size="TextSize.Size300" Style="font-style: italic;">(@parte.Referencia)</FluentText>
+                                            }
+                                        </FluentStack>
+
+                                        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8" Width="fit-content" Style="flex-shrink: 0;">
+                                            @if (!string.IsNullOrWhiteSpace(nomeDesignado))
+                                            {
+                                                <FluentAvatar Name="@nomeDesignado" Size="AvatarSize.Size28" />
+                                                <FluentText Size="TextSize.Size300" Weight="TextWeight.Bold">@nomeDesignado</FluentText>
+                                            }
+                                            else
+                                            {
+                                                <FluentAvatar Size="AvatarSize.Size28" />
+                                                <FluentText Size="TextSize.Size300" Color="Color.Default">Não designado</FluentText>
+                                            }
+                                        </FluentStack>
+                                    </FluentStack>
+
+                                    @if (parte.TempoMinutos > 0 || !string.IsNullOrWhiteSpace(parte.Descricao))
+                                    {
+                                        <FluentText Size="TextSize.Size300" Color="Color.Default" Style="line-height: 1.5; word-break: break-word; padding-left: 62px;">
+                                            @if (parte.TempoMinutos > 0)
+                                            {
+                                                <span style="font-weight: 600; color: var(--neutral-foreground-rest);">(@(parte.TempoMinutos) min)</span>@(" ")
+                                            }
+                                            @parte.Descricao
+                                        </FluentText>
+                                    }
+                                </FluentStack>
+                            </div>
+                        </ItemTemplate>
+                    </FluentSortableList>
+                }
+                else
+                {
+                    <FluentText Color="Color.Default" Align="TextAlign.Center" Style="margin: 16px 0;">Nenhuma parte cadastrada nesta seção.</FluentText>
+                }
+            </FluentStack>
+        }
+    </FluentStack>
+
+</FluentStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public required ReuniaoModel Reuniao { get; set; }
+
+    [Parameter]
+    public string Referencia { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> ReferenciaChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnSalvar { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelar { get; set; }
+
+    private TimeSpan HorarioInicio => Reuniao.DataInicio.TimeOfDay == TimeSpan.Zero
+        ? new TimeSpan(19, 30, 0)
+        : Reuniao.DataInicio.TimeOfDay;
+
+    private int DuracaoTotalMinutos => Reuniao.Partes.Sum(p => p.TempoMinutos);
+
+    private TimeSpan HorarioFim => HorarioInicio.Add(TimeSpan.FromMinutes(DuracaoTotalMinutos));
+
+    private string HorarioInicioString
+    {
+        get => HorarioInicio.ToString(@"hh\:mm");
+        set
+        {
+            if (TimeOnly.TryParse(value, out var time))
+            {
+                Reuniao.DataInicio = Reuniao.DataInicio.Date.Add(time.ToTimeSpan());
+            }
+        }
+    }
+
+    private void TratarHorarioInicioChanged(string novoHorario) => HorarioInicioString = novoHorario;
+
+    private DateTime? DataInicioNullable
+    {
+        get => Reuniao.DataInicio;
+        set
+        {
+            if (value.HasValue)
+            {
+                Reuniao.DataInicio = value.Value.Date + HorarioInicio;
+            }
+        }
+    }
+
+    private static readonly TipoSecaoReuniao[] Secoes =
+    [
+        TipoSecaoReuniao.Abertura,
+        TipoSecaoReuniao.TesourosDaPalavraDeDeus,
+        TipoSecaoReuniao.FacaSeuMelhorNoMinisterio,
+        TipoSecaoReuniao.NossaVidaCrista,
+        TipoSecaoReuniao.Conclusao
+    ];
+
+    private Dictionary<Guid, TimeSpan> ObterCronogramaInicio()
+    {
+        var cronograma = new Dictionary<Guid, TimeSpan>();
+        var atual = HorarioInicio;
+        foreach (var parte in Reuniao.Partes.OrderBy(p => p.Ordem))
+        {
+            cronograma[parte.Id] = atual;
+            atual = atual.Add(TimeSpan.FromMinutes(parte.TempoMinutos));
+        }
+        return cronograma;
+    }
+
+    private List<Parte> ObterPartesPorSecao(TipoSecaoReuniao secao) =>
+        Reuniao.Partes
+            .Where(p => p.SecaoReuniao == secao)
+            .OrderBy(p => p.Ordem)
+            .ToList();
+
+    private string ObterTituloSecao(TipoSecaoReuniao secao) => secao switch
+    {
+        TipoSecaoReuniao.Abertura => string.IsNullOrWhiteSpace(Referencia) ? "INÍCIO DA REUNIÃO" : Referencia.ToUpper(),
+        TipoSecaoReuniao.TesourosDaPalavraDeDeus => "TESOUROS DA PALAVRA DE DEUS",
+        TipoSecaoReuniao.FacaSeuMelhorNoMinisterio => "FAÇA SEU MELHOR NO MINISTÉRIO",
+        TipoSecaoReuniao.NossaVidaCrista => "NOSSA VIDA CRISTÃ",
+        TipoSecaoReuniao.Conclusao => "FIM DA REUNIÃO",
+        _ => secao.ToString()
+    };
+
+    private static string? ObterCorSecao(TipoSecaoReuniao secao) => secao switch
+    {
+        TipoSecaoReuniao.TesourosDaPalavraDeDeus => "var(--cor-tesouros)",
+        TipoSecaoReuniao.FacaSeuMelhorNoMinisterio => "var(--cor-ministerio)",
+        TipoSecaoReuniao.NossaVidaCrista => "var(--cor-vida-crista)",
+        _ => null
+    };
+
+    private static TextSize ObterTamanhoTituloSecao(TipoSecaoReuniao secao) => secao switch
+    {
+        TipoSecaoReuniao.Abertura or TipoSecaoReuniao.Conclusao => TextSize.Size500,
+        _ => TextSize.Size600
+    };
+
+    private static string? ObterNomeDesignado(Parte parte)
+    {
+        var designacao = parte.Designacoes.FirstOrDefault();
+        return designacao?.Usuario?.NomeExibicao ?? designacao?.Usuario?.NomeCompleto;
+    }
+
+    private async Task AbrirPainelEdicaoAsync(Parte parte)
+    {
+        var options = new DialogOptions
+        {
+            Alignment = DialogAlignment.End,
+            Parameters = new Dictionary<string, object?>
+            {
+                ["Content"] = parte
+            }
+        };
+
+        var result = await DialogService.ShowDialogAsync<EdicaoPartePanel>(options);
+
+        if (!result.Cancelled && result.Value is not null)
+        {
+            if (result.Value is string str && str == "REMOVER")
+            {
+                RemoverParte(parte);
+            }
+        }
+        StateHasChanged();
+    }
+
+
+
+    private async Task AdicionarParteAsync(TipoSecaoReuniao secao, TipoTemplateParte template)
+    {
+        var proximaOrdem = Reuniao.Partes.Count != 0 ? Reuniao.Partes.Max(p => p.Ordem) + 1 : 1;
+        var valoresPadrao = template.ObterValoresPadrao();
+        var novaParte = new Parte
+        {
+            Id = Guid.NewGuid(),
+            Reuniao = Reuniao,
+            SecaoReuniao = secao, // Usa a seção atual, não a padrão do template para não sumir da tela atual
+            Ordem = proximaOrdem,
+            Tema = valoresPadrao.Tema,
+            Descricao = string.Empty,
+            TempoMinutos = valoresPadrao.Minutos,
+            Template = template,
+            Referencia = string.Empty
+        };
+        Reuniao.Partes.Add(novaParte);
+        await AbrirPainelEdicaoAsync(novaParte);
+    }
+
+    private void RemoverParte(Parte parte)
+    {
+        Reuniao.Partes.Remove(parte);
+        ReordenarPartes();
+    }
+
+    private void ReordenarPartes()
+    {
+        var ordem = 1;
+        foreach (var p in Reuniao.Partes.OrderBy(p => p.Ordem))
+        {
+            p.Ordem = ordem++;
+        }
+    }
+
+    private void TratarReordenacao(TipoSecaoReuniao secao, FluentSortableListEventArgs args)
+    {
+        var partesSecao = ObterPartesPorSecao(secao);
+        if (args.OldIndex < 0 || args.OldIndex >= partesSecao.Count || args.NewIndex < 0 || args.NewIndex >= partesSecao.Count)
+            return;
+
+        var itemMovido = partesSecao[args.OldIndex];
+        partesSecao.RemoveAt(args.OldIndex);
+        partesSecao.Insert(args.NewIndex, itemMovido);
+
+        for (var i = 0; i < partesSecao.Count; i++)
+        {
+            partesSecao[i].Ordem = i + 1;
+        }
+    }
+}
