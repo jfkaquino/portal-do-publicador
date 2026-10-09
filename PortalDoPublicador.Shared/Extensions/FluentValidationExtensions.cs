@@ -4,10 +4,10 @@ namespace PortalDoPublicador.Shared.Extensions;
 
 public static class FluentValidationExtensions
 {
-    public static IRuleBuilderOptions<T, TProperty> Obrigatorio<T, TProperty>(this IRuleBuilder<T, TProperty> ruleBuilder) 
+    public static IRuleBuilderOptions<T, TProperty> Obrigatorio<T, TProperty>(this IRuleBuilder<T, TProperty> ruleBuilder)
         => ruleBuilder.NotEmpty().WithMessage("{PropertyName} é obrigatório(a).");
 
-    public static IRuleBuilderOptions<T, TProperty> NaoNulo<T, TProperty>(this IRuleBuilder<T, TProperty> ruleBuilder) 
+    public static IRuleBuilderOptions<T, TProperty> NaoNulo<T, TProperty>(this IRuleBuilder<T, TProperty> ruleBuilder)
         => ruleBuilder.NotNull().WithMessage("{PropertyName} é obrigatório(a).");
 
     public static IRuleBuilderOptions<T, string> TamanhoMaximo<T>(this IRuleBuilder<T, string> ruleBuilder, int max)

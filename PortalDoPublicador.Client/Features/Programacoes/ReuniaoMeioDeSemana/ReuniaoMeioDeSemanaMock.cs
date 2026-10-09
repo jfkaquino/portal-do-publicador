@@ -1,5 +1,4 @@
-﻿using PortalDoPublicador.Shared.Features.Publicadores;
-using PortalDoPublicador.Shared.Features.Designacoes;
+﻿using PortalDoPublicador.Shared.Features.Designacoes;
 using PortalDoPublicador.Shared.Features.Designacoes.Enums;
 using PortalDoPublicador.Shared.Features.Programacoes;
 using PortalDoPublicador.Shared.Features.Programacoes.Enums;
@@ -52,7 +51,8 @@ public static class ReuniaoMeioDeSemanaMock
                 Id = Guid.NewGuid(),
                 Parte = parteAbertura,
                 Tipo = new TipoDesignacao { Id = Guid.NewGuid(), Nome = "Presidente", Categoria = CategoriaDesignacao.Parte },
-                Usuario = new PortalDoPublicador.Shared.Features.Publicadores.Usuario {
+                Usuario = new PortalDoPublicador.Shared.Features.Publicadores.Usuario
+                {
                     Id = Guid.NewGuid(),
                     NomeCompleto = "Carlos Silva",
                     NomeExibicao = "Carlos Silva",
@@ -72,7 +72,8 @@ public static class ReuniaoMeioDeSemanaMock
                 Id = Guid.NewGuid(),
                 Parte = parte8,
                 Tipo = new TipoDesignacao { Id = Guid.NewGuid(), Nome = "Parte", Categoria = CategoriaDesignacao.Parte },
-                Usuario = new PortalDoPublicador.Shared.Features.Publicadores.Usuario {
+                Usuario = new PortalDoPublicador.Shared.Features.Publicadores.Usuario
+                {
                     Id = Guid.NewGuid(),
                     NomeCompleto = "Jorge Aquino",
                     NomeExibicao = "Jorge Aquino",

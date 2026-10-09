@@ -75,6 +75,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<App>();
 builder.Services.AddValidatorsFromAssemblyContaining<NovoUsuarioDtoValidator>();
 Mapster.TypeAdapterConfig.GlobalSettings.Scan(typeof(NovoUsuarioDtoConfig).Assembly);
 builder.Services.AddScoped<PullProcessor>();
+builder.Services.AddScoped<SyncService>();
 
 // Configura o FluentValidation globalmente para pt-BR
 ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.CultureInfo("pt-BR");

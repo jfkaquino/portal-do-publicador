@@ -3,9 +3,12 @@
 @using Microsoft.EntityFrameworkCore
 @using PortalDoPublicador.Client.Infrastructure
 @using PortalDoPublicador.Client.Infrastructure.Data
+@using PortalDoPublicador.Client.Infrastructure.Sync
 @using PortalDoPublicador.Shared.Extensions
+@implements IDisposable
 @inject IServiceScopeFactory ScopeFactory
 @inject IDialogService DialogService
+@inject SyncService SyncService
 
 <PageTitle>Usuários</PageTitle>
 
@@ -29,11 +32,19 @@
         </StartTemplate>
     </FluentTextInput>
 
-    <FluentButton Appearance="ButtonAppearance.Primary"
-                    IconStart="@(new Icons.Regular.Size20.PersonAdd())"
+    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 0.5rem;">
+        <FluentButton Appearance="ButtonAppearance.Outline"
+                      IconStart="@(new Icons.Regular.Size20.ArrowSync())"
+                      Loading="@SyncService.EstaSincronizando"
+                      OnClick="@SincronizarAsync">
+            Sincronizar
+        </FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Primary"
+                      IconStart="@(new Icons.Regular.Size20.PersonAdd())"
                       OnClick="@(() => AbrirModalAsync())">
-        Novo Usuário
-    </FluentButton>
+            Novo Usuário
+        </FluentButton>
+    </FluentStack>
 
 </FluentStack>
 
@@ -77,6 +88,9 @@
 
     protected override void OnInitialized()
     {
+        SyncService.OnSincronizacaoConcluida += TratarSyncConcluido;
+        SyncService.OnEstadoAlterado += StateHasChanged;
+
         usuarioProvider = async req =>
         {
             using var scope = ScopeFactory.CreateScope();
@@ -95,6 +109,34 @@
 
             return GridItemsProviderResult.From(items, count);
         };
+    }
+
+    private async void TratarSyncConcluido()
+    {
+        if (grid is not null)
+        {
+            await grid.RefreshDataAsync();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SincronizarAsync()
+    {
+        var sucesso = await SyncService.SincronizarAsync();
+        if (sucesso)
+        {
+            await DialogService.ShowSuccessAsync("Sincronização concluída com sucesso!");
+        }
+        else
+        {
+            await DialogService.ShowErrorAsync("Não foi possível sincronizar os dados.");
+        }
+    }
+
+    public void Dispose()
+    {
+        SyncService.OnSincronizacaoConcluida -= TratarSyncConcluido;
+        SyncService.OnEstadoAlterado -= StateHasChanged;
     }
 
     private async Task TratarCliqueLinhaAsync(FluentDataGridRow<Usuario> row)

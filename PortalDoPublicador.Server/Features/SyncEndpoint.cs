@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using PortalDoPublicador.Api.Infrastructure.Data;
 using PortalDoPublicador.Shared.Infrastructure.Sync;
@@ -23,6 +23,8 @@ public static class SyncEndpoint
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
             // 2. PROCESSAMENTO DO PUSH (O que veio do celular)
+            List<SyncResult> resultadosPush = [];
+
             if (requisicao.DadosPush is not null && requisicao.DadosPush.Count > 0)
             {
                 // Agrupamos por tabela para ganhar performance no servidor também
@@ -30,47 +32,74 @@ public static class SyncEndpoint
 
                 foreach (var grupo in pacotesPorTabela)
                 {
-                    if (!entityTypes.TryGetValue(grupo.Key, out var entityType)) continue;
+                    if (!entityTypes.TryGetValue(grupo.Key, out var entityType))
+                    {
+                        resultadosPush.AddRange(grupo.Select(p => new SyncResult
+                        {
+                            PayloadId = p.Id,
+                            Sucesso = false,
+                            MensagemErro = $"Entidade {p.EntityName} não reconhecida."
+                        }));
+                        continue;
+                    }
 
                     foreach (var payload in grupo)
                     {
-                        var entidadeBanco = (await context.FindAsync(entityType, payload.EntityId)) as ISyncable;
-
-                        // Descobrindo a intenção baseada nos Deltas
-                        var isInsert = payload.EntityChanges.Count > 0 && payload.PreviousValues.Count == 0;
-                        var isUpdate = payload.EntityChanges.Count > 0 && payload.PreviousValues.Count > 0;
-                        var isDelete = payload.EntityChanges.Count == 0 && payload.PreviousValues.Count > 0;
-
-                        if (isInsert)
+                        try
                         {
-                            // Prevenção de Duplo-Envio: Só insere se não existir no banco oficial
-                            if (entidadeBanco == null)
+                            var entidadeBanco = (await context.FindAsync(entityType, payload.EntityId)) as ISyncable;
+
+                            // Descobrindo a intenção baseada nos Deltas
+                            var isInsert = payload.EntityChanges.Count > 0 && payload.PreviousValues.Count == 0;
+                            var isUpdate = payload.EntityChanges.Count > 0 && payload.PreviousValues.Count > 0;
+                            var isDelete = payload.EntityChanges.Count == 0 && payload.PreviousValues.Count > 0;
+
+                            if (isInsert)
                             {
-                                entidadeBanco = (ISyncable)Activator.CreateInstance(entityType)!;
-                                entidadeBanco.Id = payload.EntityId;
+                                // Prevenção de Duplo-Envio: Só insere se não existir no banco oficial
+                                if (entidadeBanco == null)
+                                {
+                                    entidadeBanco = (ISyncable)Activator.CreateInstance(entityType)!;
+                                    entidadeBanco.Id = payload.EntityId;
 
-                                var entry = context.Entry(entidadeBanco);
-                                AplicarMudancas(entry, payload.EntityChanges, options);
+                                    var entry = context.Entry(entidadeBanco);
+                                    AplicarMudancas(entry, payload.EntityChanges, options);
 
-                                context.Add(entidadeBanco);
+                                    context.Add(entidadeBanco);
+                                }
                             }
+                            else if (isUpdate)
+                            {
+                                // Só atualiza se o registro ainda existir no banco
+                                if (entidadeBanco != null)
+                                {
+                                    // TODO: Aqui entraria a Resolução de Conflitos (RowVersion check)
+                                    var entry = context.Entry(entidadeBanco);
+                                    AplicarMudancas(entry, payload.EntityChanges, options);
+                                }
+                            }
+                            else if (isDelete)
+                            {
+                                if (entidadeBanco != null)
+                                {
+                                    context.Remove(entidadeBanco);
+                                }
+                            }
+
+                            resultadosPush.Add(new SyncResult
+                            {
+                                PayloadId = payload.Id,
+                                Sucesso = true
+                            });
                         }
-                        else if (isUpdate)
+                        catch (Exception ex)
                         {
-                            // Só atualiza se o registro ainda existir no banco
-                            if (entidadeBanco != null)
+                            resultadosPush.Add(new SyncResult
                             {
-                                // TODO: Aqui entraria a Resolução de Conflitos (RowVersion check)
-                                var entry = context.Entry(entidadeBanco);
-                                AplicarMudancas(entry, payload.EntityChanges, options);
-                            }
-                        }
-                        else if (isDelete)
-                        {
-                            if (entidadeBanco != null)
-                            {
-                                context.Remove(entidadeBanco);
-                            }
+                                PayloadId = payload.Id,
+                                Sucesso = false,
+                                MensagemErro = ex.Message
+                            });
                         }
                     }
                 }
@@ -82,10 +111,11 @@ public static class SyncEndpoint
             // 3. PROCESSAMENTO DO PULL (O que o servidor precisa mandar de volta)
             List<SyncPayload> payloadsParaDevolver = [];
 
-            // TODO: Lógica para buscar registros alterados no banco desde requisicao.LastSync
+            // TODO: Lógica para buscar registros alterados no banco desde requisicao.UltimaSincronizacao
 
             var response = new SyncResponse
             {
+                ResultadosPush = resultadosPush,
                 DadosPull = payloadsParaDevolver,
                 Timestamp = DateTime.UtcNow
             };

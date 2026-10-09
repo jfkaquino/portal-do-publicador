@@ -9,10 +9,10 @@ async function syncQueue(db) {
         const configReq = await dbLerItem(db, 'Configuracoes', 'ultimaSync');
         if (configReq) ultimaSync = configReq.valor;
 
-        // 2. Monta o Envelope
+        // 2. Monta o Envelope aderente a SyncRequest
         const payloadEnvio = {
             ultimaSincronizacao: ultimaSync,
-            comandosPush: comandosPendentes
+            dadosPush: comandosPendentes
         };
 
         // 3. Dispara a chamada ÚNICA
@@ -38,9 +38,7 @@ async function syncQueue(db) {
                     });
                 }
                 
-                // Em um cenário real, removeria apenas o comando em conflito.
-                // Aqui estamos limpando os que falharam para não travar a fila.
-                await limparComandosProcessados(db, comandosPendentes.map(c => ({ comandoId: c.id })));
+                await limparComandosProcessados(db, comandosPendentes.map(c => c.id));
             }
             return;
         }
@@ -48,25 +46,29 @@ async function syncQueue(db) {
         // 4. Desempacota a resposta
         const respostaServidor = await respostaHTTP.json();
 
-        // A. Limpa a fila do que deu certo no Push
-        if (respostaServidor.relatorioPush.length > 0) {
-            await limparComandosProcessados(db, respostaServidor.relatorioPush);
+        // A. Limpa da SyncPushQueue os itens com sucesso
+        const resultadosPush = respostaServidor.resultadosPush || [];
+        const idsSucesso = resultadosPush.filter(r => r.sucesso).map(r => r.payloadId);
+
+        // Se o servidor não devolveu detalhamento mas retornou 200, assume que todos pendentes foram processados
+        const idsParaLimpar = idsSucesso.length > 0 ? idsSucesso : comandosPendentes.map(c => c.id);
+        if (idsParaLimpar.length > 0) {
+            await limparComandosProcessados(db, idsParaLimpar);
         }
 
-        // B. Salva os deltas novos no IndexedDB para o Blazor processar
-        const dadosPull = respostaServidor.dadosPull;
-        const temAtualizacoes = Object.keys(dadosPull.entidadesAtualizadas || {}).length > 0;
-        const temExclusoes = Object.keys(dadosPull.entidadesExcluidas || {}).length > 0;
-        
-        if (temAtualizacoes || temExclusoes) {
-            await dbSalvarItem(db, 'SyncPullQueue', { dados: dadosPull });
+        // B. Salva cada delta de pull individualmente na SyncPullQueue
+        const dadosPull = respostaServidor.dadosPull || [];
+        for (const itemPull of dadosPull) {
+            await dbSalvarItem(db, 'SyncPullQueue', itemPull);
         }
 
         // C. Atualiza a data com o relógio oficial do servidor
-        await dbSalvarItem(db, 'Configuracoes', {
-            chave: 'ultimaSync',
-            valor: respostaServidor.novaDataSincronizacao
-        });
+        if (respostaServidor.timestamp) {
+            await dbSalvarItem(db, 'Configuracoes', {
+                chave: 'ultimaSync',
+                valor: respostaServidor.timestamp
+            });
+        }
 
     } catch (erro) {
         console.error('Erro na sincronização bidirecional:', erro);
@@ -74,10 +76,10 @@ async function syncQueue(db) {
     }
 }
 
-async function limparComandosProcessados(db, relatorio) {
-    for (const r of relatorio) {
+async function limparComandosProcessados(db, ids) {
+    for (const id of ids) {
         await new Promise((resolve) => {
-            const req = db.transaction('SyncPushQueue', 'readwrite').objectStore('SyncPushQueue').delete(r.comandoId);
+            const req = db.transaction('SyncPushQueue', 'readwrite').objectStore('SyncPushQueue').delete(id);
             req.onsuccess = resolve;
             req.onerror = resolve; // Ignore se não existir
         });
